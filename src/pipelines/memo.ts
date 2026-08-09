@@ -545,12 +545,18 @@ async function run(dryRun: boolean): Promise<void> {
   }
 
   // Top-level Zaire messages (not in a thread) answer the latest digest.
+  // Messages the bot itself posted with a [voice] tag count as Zaire's too —
+  // they can only originate from his authenticated voice session (v1.4 §5.4).
   const latest = digests[0]
   if (latest) {
     try {
       const oldest = (new Date(sinceIso).getTime() / 1000).toFixed(6)
       const topLevel = (await fetchHistory(rt.slack, rt.channel, oldest)).filter(
-        (m) => m.user === rt.zaireSlackId && !m.threadTs && !store.isHandled(m.ts),
+        (m) =>
+          (m.user === rt.zaireSlackId ||
+            (m.user === null && m.text.startsWith('[voice]'))) &&
+          !m.threadTs &&
+          !store.isHandled(m.ts),
       )
       for (const message of topLevel) {
         const text = await messageText(rt, message)
