@@ -32,14 +32,23 @@ export async function POST(request: Request) {
           output: { voice: process.env.VOICE_ID ?? 'sage' },
           input: {
             transcription: { model: 'whisper-1' },
-            // Padding keeps background noise from clipping turns mid-sentence
-            // (reported as "choppy" in the first live phone session).
-            turn_detection: {
-              type: 'server_vad',
-              threshold: 0.5,
-              prefix_padding_ms: 300,
-              silence_duration_ms: 700,
-            },
+            // Semantic VAD: the model judges when Zaire has FINISHED A THOUGHT
+            // instead of counting milliseconds of silence — this is what makes
+            // ChatGPT's voice mode wait through pauses and "um"s rather than
+            // jumping in (live feedback, 2026-08-09). 'low' eagerness = most
+            // patient. Set VOICE_TURN_DETECTION=server_vad to fall back.
+            turn_detection:
+              process.env.VOICE_TURN_DETECTION === 'server_vad'
+                ? {
+                    type: 'server_vad',
+                    threshold: 0.5,
+                    prefix_padding_ms: 300,
+                    silence_duration_ms: 1000,
+                  }
+                : {
+                    type: 'semantic_vad',
+                    eagerness: process.env.VOICE_TURN_EAGERNESS ?? 'low',
+                  },
           },
         },
       },
