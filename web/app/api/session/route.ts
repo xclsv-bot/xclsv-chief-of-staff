@@ -12,32 +12,43 @@ export async function POST(request: Request) {
     return new NextResponse('Unauthorized', { status: 401 })
   }
 
-  const response = await fetch('https://api.openai.com/v1/realtime/sessions', {
+  // GA Realtime API (gpt-realtime, Aug 2025): endpoint renamed to
+  // /v1/realtime/client_secrets; audio/transcription/turn_detection moved under
+  // session.audio; response returns { value, expires_at } at top level.
+  const response = await fetch('https://api.openai.com/v1/realtime/client_secrets', {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: process.env.OPENAI_REALTIME_MODEL ?? 'gpt-4o-realtime-preview-2024-12-17',
-      voice: process.env.VOICE_ID ?? 'sage',
-      instructions: buildVoiceSystemPrompt(),
-      tools: toolSchemas,
-      tool_choice: 'auto',
-      input_audio_transcription: { model: 'whisper-1' },
-      turn_detection: { type: 'server_vad', threshold: 0.5 },
+      session: {
+        type: 'realtime',
+        model: process.env.OPENAI_REALTIME_MODEL ?? 'gpt-realtime',
+        instructions: buildVoiceSystemPrompt(),
+        tools: toolSchemas,
+        tool_choice: 'auto',
+        audio: {
+          output: { voice: process.env.VOICE_ID ?? 'sage' },
+          input: {
+            transcription: { model: 'whisper-1' },
+            turn_detection: { type: 'server_vad', threshold: 0.5 },
+          },
+        },
+      },
     }),
   })
 
   if (!response.ok) {
-    return new NextResponse(await response.text(), { status: 500 })
+    const body = await response.text()
+    console.error('[session-mint] OpenAI', response.status, body.slice(0, 400))
+    return new NextResponse(body, { status: 500 })
   }
 
-  const data = (await response.json()) as {
-    client_secret: { value: string; expires_at: number }
-  }
+  const data = (await response.json()) as { value: string; expires_at: number }
+  console.log('[session-mint] ok', data.value.slice(0, 12), 'expires', data.expires_at)
   return NextResponse.json({
-    client_secret: data.client_secret.value,
-    expires_at: data.client_secret.expires_at,
+    client_secret: data.value,
+    expires_at: data.expires_at,
   })
 }

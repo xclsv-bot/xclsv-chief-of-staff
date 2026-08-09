@@ -32,11 +32,11 @@ export async function startVoiceSession(
 
   const tokenResponse = await fetch('/api/session', { method: 'POST' })
   if (!tokenResponse.ok) {
-    throw new Error(
-      tokenResponse.status === 401
-        ? 'Not authorized — open your bookmarked Arya link (with the key) once.'
-        : "We couldn't reach the voice service. Try again in a minute.",
-    )
+    if (tokenResponse.status === 401) {
+      throw new Error('Not authorized — open your bookmarked Arya link (with the key) once.')
+    }
+    const body = await tokenResponse.text().catch(() => '')
+    throw new Error(`Session mint failed (${tokenResponse.status}): ${body.slice(0, 200)}`)
   }
   const { client_secret: clientSecret } = (await tokenResponse.json()) as {
     client_secret: string
@@ -121,20 +121,19 @@ export async function startVoiceSession(
   const offer = await pc.createOffer()
   await pc.setLocalDescription(offer)
 
-  const model =
-    process.env.NEXT_PUBLIC_REALTIME_MODEL ?? 'gpt-4o-realtime-preview-2024-12-17'
-  const sdpResponse = await fetch(
-    `https://api.openai.com/v1/realtime?model=${encodeURIComponent(model)}`,
-    {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${clientSecret}`, 'Content-Type': 'application/sdp' },
-      body: offer.sdp,
-    },
-  )
+  // GA Realtime WebRTC endpoint: /v1/realtime/calls (model comes from the
+  // ephemeral secret's session config, not a query param). The beta shape
+  // /v1/realtime?model=... was retired in the Aug 2025 GA release.
+  const sdpResponse = await fetch('https://api.openai.com/v1/realtime/calls', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${clientSecret}`, 'Content-Type': 'application/sdp' },
+    body: offer.sdp,
+  })
   if (!sdpResponse.ok) {
+    const body = await sdpResponse.text().catch(() => '')
     pc.close()
     for (const track of media.getTracks()) track.stop()
-    throw new Error("We couldn't reach the voice service. Try again in a minute.")
+    throw new Error(`SDP handshake failed (${sdpResponse.status}): ${body.slice(0, 200)}`)
   }
   await pc.setRemoteDescription({ type: 'answer', sdp: await sdpResponse.text() })
   callbacks.onStatus('listening')

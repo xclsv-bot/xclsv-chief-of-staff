@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  LaunchAgent for the Arya voice PWA (spec §14 self-host).
+
+  Install:
+    cp scripts/com.xclsv.arya-voice.plist ~/Library/LaunchAgents/
+    launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.xclsv.arya-voice.plist
+    launchctl kickstart -k gui/$(id -u)/com.xclsv.arya-voice
+
+  Reload after edits:
+    launchctl bootout gui/$(id -u)/com.xclsv.arya-voice
+    launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.xclsv.arya-voice.plist
+
+  Uninstall:
+    launchctl bootout gui/$(id -u)/com.xclsv.arya-voice
+    rm ~/Library/LaunchAgents/com.xclsv.arya-voice.plist
+
+  Runs the pre-built server (npm run start). Rebuild manually after code
+  changes with scripts/run_voice.sh, then kickstart to pick up the new bundle.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.xclsv.arya-voice</string>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/arya/clawd/chief-of-staff/web</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/opt/homebrew/bin/npm</string>
+    <string>run</string>
+    <string>start</string>
+    <string>--</string>
+    <string>--port</string>
+    <string>3100</string>
+  </array>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    <key>NODE_ENV</key>
+    <string>production</string>
+  </dict>
+
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+
+  <key>StandardOutPath</key>
+  <string>/Users/arya/clawd/chief-of-staff/data/logs/voice.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/arya/clawd/chief-of-staff/data/logs/voice.log</string>
+</dict>
+</plist>
