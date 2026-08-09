@@ -282,6 +282,12 @@ rules, same approval gates; voice approval of drafts is explicitly out of scope
 for v1 (spec §12). Setup, build order, and risks live in the spec; env vars are
 in `.env.example` under "Voice interface."
 
+**Spoken style:** `agent/voice-conduct.md` governs how Arya talks on a call —
+she briefs like a chief of staff (headline, the one that matters, grouped rest,
+hand back the turn) instead of reading digest lines aloud. Zaire tunes it by
+editing the markdown; sources from OpenAI/ElevenLabs voice-agent guidance are
+footnoted in the file.
+
 **How to run:** `cd web && npm install && npm run dev`, then open
 `http://localhost:3000/?k=<VOICE_SHARED_SECRET>` once (sets the cookie). Env
 vars go in `web/.env.local` (or the deploy platform): the voice block from
