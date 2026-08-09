@@ -16,7 +16,7 @@ A single agent — named **Arya** — that acts as an executive-assistant layer 
 
 **2. Architecture**
 
-- **Agent core:** Claude Code agent with scheduled runs. Instruction files kept in repo: label-taxonomy.md, triage-rules.md, writing-profile.md, speaking-profile.md, nudge-rules.md.
+- **Agent core:** Claude Code agent with scheduled runs. Instruction files kept in repo: label-taxonomy.md, triage-rules.md, writing-profile.md, voice-conduct.md, nudge-rules.md.
 
 - **Gmail connector (v1 scopes):** read, modify labels, archive, create drafts. **No send scope. No delete scope.** Sending is manual (from Gmail) in v1 — see Section 9. Applies to both Zaire's mailbox and the Arya mailbox.
 

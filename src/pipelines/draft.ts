@@ -1,7 +1,7 @@
 // Draft generation — spec §6. Drafts are written in Zaire's voice (they will be
 // sent from HIS mailbox by HIM, so no Arya signature), conditioned on
-// writing-profile.md (Zaire's distilled written voice; the spoken-voice profile
-// for the Realtime session lives separately in speaking-profile.md). Hard rules
+// writing-profile.md (Zaire's distilled written voice; the spoken-conduct file
+// for the Realtime session lives separately in voice-conduct.md). Hard rules
 // are enforced twice: in the prompt, and mechanically after generation —
 // validateDraft() is the backstop the model cannot talk its way past.
 
