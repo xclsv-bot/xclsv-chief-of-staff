@@ -164,9 +164,12 @@ async function run(dryRun: boolean): Promise<void> {
   const classifyModel = optionalEnv('ANTHROPIC_CLASSIFY_MODEL', 'claude-haiku-4-5-20251001')
   const distillModel = optionalEnv('ANTHROPIC_MODEL', 'claude-sonnet-5')
   const maxEmails = Number(optionalEnv('CORPUS_MAX_EMAILS', '2000'))
+  const windowDays = Number(optionalEnv('CORPUS_WINDOW_DAYS', '365'))
+  console.log(`corpus window: ${windowDays} days`)
 
-  // 1. Sent mail, trailing 12 months.
-  const ids = await listMessageIds(gmail, 'in:sent newer_than:365d', maxEmails)
+  // 1. Sent mail, trailing window (default 12 months; shorter windows for
+  //    incremental / first-pass builds — spec §6.1 refresh cadence).
+  const ids = await listMessageIds(gmail, `in:sent newer_than:${windowDays}d`, maxEmails)
   console.log(`sent messages found: ${ids.length}`)
   const kept: CorpusEmail[] = []
   let excluded = 0
@@ -206,7 +209,7 @@ async function run(dryRun: boolean): Promise<void> {
   if (channelIds.length > 0) {
     const slack = slackClient(requireEnv('SLACK_BOT_TOKEN'))
     const zaireId = requireEnv('ZAIRE_SLACK_USER_ID')
-    const oldest = ((Date.now() - 365 * 86_400_000) / 1000).toFixed(6)
+    const oldest = ((Date.now() - windowDays * 86_400_000) / 1000).toFixed(6)
     const lines: string[] = []
     for (const channel of channelIds) {
       const messages = await fetchAllHistory(slack, channel, oldest)

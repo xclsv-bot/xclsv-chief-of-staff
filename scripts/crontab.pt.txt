@@ -1,0 +1,45 @@
+# Chief-of-Staff Arya — cron schedule
+# All times PT. Install ONLY after Mac mini's system timezone is set to PT.
+# Install: crontab /Users/arya/clawd/chief-of-staff/scripts/crontab.pt.txt
+#
+# NOTE: this file must include ALL crontab entries for this user, not just CoS.
+# Preserving Luna's existing weekly brand offer check below.
+
+# Cron env — cron has minimal PATH; give it the full one for npm/node.
+PATH=/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
+SHELL=/bin/bash
+
+# ─────────────────────────────────────────────────────────
+# Luna: Weekly Brand Offer Check (Monday 9:00 AM local time)
+# ─────────────────────────────────────────────────────────
+0 9 * * 1 /Users/arya/clawd/agents/luna/scripts/weekly-brand-offer-check.sh
+
+# ─────────────────────────────────────────────────────────
+# Chief-of-Staff Arya — email pipelines (Mon–Sat, no Sundays)
+# ─────────────────────────────────────────────────────────
+
+# Nudge scan — 6:45 AM PT, pre-drafts follow-ups for morning digest
+45 6 * * 1-6 cd /Users/arya/clawd/chief-of-staff && /opt/homebrew/bin/npm run nudges >> /Users/arya/clawd/chief-of-staff/data/cron.log 2>&1
+
+# Triage sweep — every hour on the hour, 7 AM – 5 PM PT
+0 7-17 * * 1-6 cd /Users/arya/clawd/chief-of-staff && /opt/homebrew/bin/npm run sweep >> /Users/arya/clawd/chief-of-staff/data/cron.log 2>&1
+
+# Morning digest — 7:05 AM PT (right after the 7 AM sweep completes)
+5 7 * * 1-6 cd /Users/arya/clawd/chief-of-staff && /opt/homebrew/bin/npm run digest >> /Users/arya/clawd/chief-of-staff/data/cron.log 2>&1
+
+# Afternoon digest — 5:05 PM PT (right after the 5 PM sweep completes)
+5 17 * * 1-6 cd /Users/arya/clawd/chief-of-staff && /opt/homebrew/bin/npm run digest >> /Users/arya/clawd/chief-of-staff/data/cron.log 2>&1
+
+# ─────────────────────────────────────────────────────────
+# Chief-of-Staff Arya — Zoom call ingest (all 7 days)
+# ─────────────────────────────────────────────────────────
+
+# Zoom recording poll — every 30 min, 8 AM – 8 PM PT, 7 days/week
+*/30 8-20 * * * cd /Users/arya/clawd/chief-of-staff && /opt/homebrew/bin/npm run calls >> /Users/arya/clawd/chief-of-staff/data/cron.log 2>&1
+
+# ─────────────────────────────────────────────────────────
+# Chief-of-Staff Arya — weekly maintenance
+# ─────────────────────────────────────────────────────────
+
+# Voice corpus rebuild — Sunday 9 PM PT (refresh from last week's sent mail)
+0 21 * * 0 cd /Users/arya/clawd/chief-of-staff && /opt/homebrew/bin/npm run corpus >> /Users/arya/clawd/chief-of-staff/data/cron.log 2>&1
