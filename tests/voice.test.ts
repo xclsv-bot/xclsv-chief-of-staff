@@ -29,7 +29,7 @@ describe('tool dispatch (spec §5.6)', () => {
     // create_task with no env configured fails inside the handler → friendly retry line.
     const result = await executeToolCall('create_task', { title: 'x', description: 'y' })
     expect(result).toContain("didn't go through")
-    expect(result).not.toContain('at ') // no stack traces read aloud
+    expect(result).not.toMatch(/\n\s+at /) // no stack traces read aloud
   })
 })
 
