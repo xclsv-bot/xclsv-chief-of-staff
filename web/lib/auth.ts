@@ -2,11 +2,7 @@
 // as ?k=<secret> and lives on as an HttpOnly cookie set by middleware.ts.
 
 import { cookies } from 'next/headers'
-
-/** Pure comparison, unit-testable without Next request machinery. */
-export function keyMatches(key: string | null | undefined, secret: string | undefined): boolean {
-  return !!secret && !!key && key === secret
-}
+import { keyMatches } from './secret'
 
 export async function checkAuth(request: Request): Promise<boolean> {
   const url = new URL(request.url)

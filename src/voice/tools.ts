@@ -119,6 +119,11 @@ const HANDLERS: Record<string, (args: Record<string, unknown>) => Promise<string
   search_email: searchEmail,
 }
 
+/** Names with a live handler — tests assert parity with toolSchemas. */
+export function registeredTools(): string[] {
+  return Object.keys(HANDLERS)
+}
+
 export async function executeToolCall(
   name: string,
   args: Record<string, unknown>,

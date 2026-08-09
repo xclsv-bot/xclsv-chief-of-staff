@@ -282,6 +282,29 @@ rules, same approval gates; voice approval of drafts is explicitly out of scope
 for v1 (spec §12). Setup, build order, and risks live in the spec; env vars are
 in `.env.example` under "Voice interface."
 
+**How to run:** `cd web && npm install && npm run dev`, then open
+`http://localhost:3000/?k=<VOICE_SHARED_SECRET>` once (sets the cookie). Env
+vars go in `web/.env.local` (or the deploy platform): the voice block from
+`.env.example` plus `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, the Gmail trio,
+Slack bot token + channel, and the four Asana values. Full transcripts land in
+`data/state.db` (`voice_sessions`, `voice_tool_calls`).
+
+**How to verify:** `npm test` at the repo root (tool dispatch parity, auth,
+spoken-digest formatter, transcript tables) and the spec §13 manual smoke tests
+once deployed — say "what's on my plate?", file a task, dictate a draft.
+
+**How to roll back:** stop serving `web/` — nothing else changes; every voice
+action went through the same gates as text, so there is no voice-only state to
+unwind.
+
+**Deployment note (flagged before any deploy):** the tool handlers and
+transcript log read/write the SQLite file at `data/state.db`. On Vercel's
+serverless filesystem that file is ephemeral and NOT shared with the machine
+running the cron pipelines — tools like read_todays_digest would see an empty
+state. For v1, run `web/` on the same host as the pipelines (`npm run build &&
+npm run start` behind a tunnel/reverse proxy), or move state to a hosted DB
+before a Vercel deploy.
+
 ### Audio digest + voice approval (hands-free loop)
 
 **What landed:** every posted digest also gets a voice-note rendition attached in its
