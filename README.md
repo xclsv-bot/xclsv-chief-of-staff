@@ -271,6 +271,17 @@ create/comment-only guard). **Roll back:** stop both cron entries. Created Asana
 tasks are visible and reversible by hand; call digests are plain Slack threads;
 nothing was sent anywhere.
 
+### Voice interface (v1.4)
+
+Real-time voice front door per `docs/voice-interface-spec.md`: a Next.js PWA
+(`web/`) where Zaire taps a mic and talks to Arya — WebRTC to the OpenAI Realtime
+API, with tool calls relayed through the app's backend into this codebase (digest
+reads, Asana tasks, Gmail drafts, Slack notes, email search). Voice is a sibling
+entry point to `#inbox-gps`, not a replacement: same state DB, same draft-only
+rules, same approval gates; voice approval of drafts is explicitly out of scope
+for v1 (spec §12). Setup, build order, and risks live in the spec; env vars are
+in `.env.example` under "Voice interface."
+
 ### Audio digest + voice approval (hands-free loop)
 
 **What landed:** every posted digest also gets a voice-note rendition attached in its
