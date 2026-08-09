@@ -46,8 +46,13 @@ export async function startVoiceSession(
   const media = await navigator.mediaDevices.getUserMedia({ audio: true })
   for (const track of media.getTracks()) pc.addTrack(track, media)
 
-  const audio = new Audio()
+  // DOM-attached with playsinline — iOS Safari stutters on detached audio
+  // elements, which read as "choppy" playback.
+  const audio = document.createElement('audio')
   audio.autoplay = true
+  audio.setAttribute('playsinline', '')
+  audio.style.display = 'none'
+  document.body.appendChild(audio)
   pc.ontrack = (event) => {
     audio.srcObject = event.streams[0] ?? null
   }
@@ -144,6 +149,7 @@ export async function startVoiceSession(
       channel.close()
       pc.close()
       for (const track of media.getTracks()) track.stop()
+      audio.remove()
       callbacks.onStatus('idle')
     },
   }

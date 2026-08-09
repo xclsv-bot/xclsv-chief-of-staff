@@ -4,6 +4,7 @@
 
 import { describe, expect, it } from 'vitest'
 import { formatSpokenDigest } from '../src/voice/handlers/read_digest.js'
+import { nowLinePT } from '../src/voice/session.js'
 import { executeToolCall, registeredTools, toolSchemas } from '../src/voice/tools.js'
 import { StateStore } from '../src/state.js'
 import { keyMatches } from '../web/lib/secret.js'
@@ -87,6 +88,24 @@ describe('formatSpokenDigest (spec §5.1 — never invents items)', () => {
       'No digest has been posted yet',
     )
     store.close()
+  })
+
+  it('flags a stale digest instead of presenting it as today (time honesty)', () => {
+    const store = seededStore() // digest posted "now"
+    const threeDaysLater = new Date(Date.now() + 3 * 86_400_000)
+    const spoken = formatSpokenDigest(store, 'needs_you', threeDaysLater)
+    expect(spoken).toContain('Heads up: the latest digest is from')
+    expect(spoken).toContain('nothing newer has posted')
+    // Same-day read carries no stale note.
+    expect(formatSpokenDigest(store, 'needs_you', new Date())).not.toContain('Heads up')
+    store.close()
+  })
+})
+
+describe('nowLinePT (session time anchor)', () => {
+  it('renders the current moment in Pacific time with weekday and date', () => {
+    const line = nowLinePT(new Date('2026-08-09T22:41:00Z'))
+    expect(line).toBe('Right now it is Sunday, August 9, 2026 at 3:41 PM PDT.')
   })
 })
 

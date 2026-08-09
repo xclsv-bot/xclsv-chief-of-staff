@@ -32,7 +32,14 @@ export async function POST(request: Request) {
           output: { voice: process.env.VOICE_ID ?? 'sage' },
           input: {
             transcription: { model: 'whisper-1' },
-            turn_detection: { type: 'server_vad', threshold: 0.5 },
+            // Padding keeps background noise from clipping turns mid-sentence
+            // (reported as "choppy" in the first live phone session).
+            turn_detection: {
+              type: 'server_vad',
+              threshold: 0.5,
+              prefix_padding_ms: 300,
+              silence_duration_ms: 700,
+            },
           },
         },
       },

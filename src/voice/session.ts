@@ -18,6 +18,25 @@ function read(dir: string, name: string): string {
   return existsSync(path) ? readFileSync(path, 'utf8') : ''
 }
 
+/**
+ * The session's time anchor. All pipeline scheduling is Pacific (spec §2), so
+ * Arya's spoken "now" is Pacific too — computed fresh per session, because the
+ * model has no clock of its own and will otherwise guess from stale data.
+ */
+export function nowLinePT(now = new Date()): string {
+  const formatted = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Los_Angeles',
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZoneName: 'short',
+  }).format(now)
+  return `Right now it is ${formatted}.`
+}
+
 export function buildVoiceSystemPrompt(): string {
   const dir = agentDir()
   return [
@@ -38,6 +57,13 @@ export function buildVoiceSystemPrompt(): string {
     read(dir, 'feedback-log.md'),
     '---',
     '# Current interface: live voice call with Zaire',
+    '',
+    nowLinePT(),
+    'That line is your ONLY source of the current date and time. "Today,"',
+    '"this morning," "yesterday" all resolve against it — never against dates',
+    'you see inside digests, emails, or tasks. When the data you are reading is',
+    'from an earlier day, SAY SO ("that digest is from Thursday") instead of',
+    'presenting it as current.',
     '',
     'He is likely mobile (driving, walking, mid-task). voice-conduct.md above',
     'governs how you speak — brief like a chief of staff, never read records',

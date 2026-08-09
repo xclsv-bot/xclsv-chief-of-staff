@@ -31,6 +31,15 @@ function spokenItems(
   return lines
 }
 
+function ptDay(iso: string | Date): string {
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Los_Angeles',
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+  }).format(typeof iso === 'string' ? new Date(iso) : iso)
+}
+
 export function formatSpokenDigest(
   store: StateStore,
   section: 'all' | 'needs_you' | 'ready_nudges' | 'flags',
@@ -40,6 +49,12 @@ export function formatSpokenDigest(
   if (!digest) {
     return 'No digest has been posted yet today — the inbox pipeline may not have run.'
   }
+  // Time honesty: never present an older digest as today's (the model has no
+  // clock — it will otherwise relay Thursday's world as "today").
+  const staleNote =
+    ptDay(digest.postedAt) !== ptDay(now)
+      ? `Heads up: the latest digest is from ${ptDay(digest.postedAt)} — nothing newer has posted since. `
+      : ''
   const needsYou = digest.items.filter((i) => i.section === 'needs_you')
   const nudges = digest.items.filter((i) => i.section === 'ready_nudges')
   const flags = [
@@ -71,7 +86,7 @@ export function formatSpokenDigest(
       parts.push('No flags.')
     }
   }
-  return parts.join(' ')
+  return staleNote + parts.join(' ')
 }
 
 export async function readTodaysDigest(args: Record<string, unknown>): Promise<string> {

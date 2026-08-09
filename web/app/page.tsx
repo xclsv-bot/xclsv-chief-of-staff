@@ -1,8 +1,9 @@
 'use client'
 
-// Mic button + session transcript (spec §9). Tap to start a session, tap again
-// to end it. Transcript turns append as OpenAI Realtime reports them; the full
-// transcript persists on session end (build step 12).
+// The listening orb (Zaire's call, 2026-08-09): no on-screen transcript, no
+// running summary of what he's saying — one bubble in the middle that talks
+// back and forth. Transcripts are still captured silently and persisted to the
+// state DB on session end (spec §11); they just never render.
 
 import { useEffect, useRef, useState } from 'react'
 import { startVoiceSession, type VoiceSession } from '@/lib/webrtc'
@@ -14,18 +15,18 @@ interface Turn {
   timestamp: string
 }
 
+const HINTS: Record<Status, string> = {
+  idle: 'Tap to talk to Arya',
+  connecting: 'Connecting…',
+  listening: 'Listening — tap to end',
+  speaking: 'Arya is talking — tap to end',
+}
+
 export default function Home() {
   const [status, setStatus] = useState<Status>('idle')
-  const [turns, setTurns] = useState<Turn[]>([])
   const [error, setError] = useState<string | null>(null)
   const sessionRef = useRef<VoiceSession | null>(null)
   const turnsRef = useRef<Turn[]>([])
-  const scrollRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    turnsRef.current = turns
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight })
-  }, [turns])
 
   async function persistTranscript(sessionId: string) {
     try {
@@ -36,7 +37,7 @@ export default function Home() {
         keepalive: true,
       })
     } catch {
-      // Transcript persistence is best-effort from the client.
+      // Best-effort from the client.
     }
   }
 
@@ -50,14 +51,13 @@ export default function Home() {
       return
     }
     try {
-      setTurns([])
+      turnsRef.current = []
       sessionRef.current = await startVoiceSession({
         onStatus: setStatus,
-        onTranscript: (role, content) =>
-          setTurns((prev) => [
-            ...prev,
-            { role, content, timestamp: new Date().toISOString() },
-          ]),
+        onTranscript: (role, content) => {
+          // Captured for persistence only — deliberately not rendered.
+          turnsRef.current.push({ role, content, timestamp: new Date().toISOString() })
+        },
         onError: setError,
       })
     } catch (cause) {
@@ -85,21 +85,16 @@ export default function Home() {
         <span className={`pill ${status}`}>{status}</span>
       </div>
       {error && <div className="error">{error}</div>}
-      <div className="transcript" ref={scrollRef}>
-        {turns.map((turn, index) => (
-          <div key={index} className={`turn ${turn.role}`}>
-            {turn.content}
-          </div>
-        ))}
+      <div className="stage">
+        <button
+          className={`orb ${status}`}
+          aria-label={live ? 'End voice session' : 'Start voice session'}
+          onClick={() => void toggleSession()}
+        >
+          🎙️
+        </button>
       </div>
-      <button
-        className={`mic ${live ? 'live' : ''}`}
-        aria-label={live ? 'End voice session' : 'Start voice session'}
-        onClick={() => void toggleSession()}
-      >
-        {live ? '⏹' : '🎙️'}
-      </button>
-      <p className="hint">{live ? 'Tap to end the session' : 'Tap to talk to Arya'}</p>
+      <p className="hint">{HINTS[status]}</p>
     </main>
   )
 }
