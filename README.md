@@ -232,9 +232,12 @@ drafts just expire in the DB — nothing was sent.
 (create + comment only, structurally guarded by `tests/asana-guard.test.ts`), and
 `src/pipelines/asana_router.ts` (`npm run asana`).
 
-**Calls (spec §13):** every recorded Zoom call with a transcript becomes a per-call
-Slack thread — 3–5 line summary, decisions, numbered action items with owners.
-Routing waits out a 30-minute correction window ("item 2 is Andrea's, kill item 4" —
+**Calls (spec §13, routing-only by request):** no prose summary. A recorded call with
+actionable items produces one compact routing plan in Slack ("1. → your Asana: Send
+Tony payment dates · 2. → Arya drafts: Send the deck · 3. → waiting ledger (Rebet):
+redlines by Wed"); a call with nothing actionable posts nothing at all. The plan
+exists because the correction window is a non-negotiable (CLAUDE.md constraint 4):
+routing waits 30 minutes for a veto/correction ("item 2 is Andrea's, kill item 4" —
 only Zaire's replies re-route) or executes immediately on his ✅. Then: Zaire-owned
 items → Asana tasks in his My Tasks (deduped — a close match to an open task gets a
 comment, not a duplicate); Arya-lane items → approval-gated email drafts (from her

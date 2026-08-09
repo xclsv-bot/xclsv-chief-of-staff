@@ -10,7 +10,7 @@ import {
 } from '../src/pipelines/asana_router.js'
 import {
   parseActionItems,
-  renderCallDigest,
+  renderRoutingPost,
   shouldRoute,
 } from '../src/pipelines/call_ingest.js'
 import { eligibleForNudge } from '../src/pipelines/nudge.js'
@@ -115,21 +115,26 @@ describe('shouldRoute (spec §13 correction window)', () => {
   })
 })
 
-describe('renderCallDigest', () => {
-  it('summary, decisions, numbered owner-tagged items, correction footer', () => {
-    const text = renderCallDigest(
-      'Rebet launch sync', 'Launch planning call.', ['Both days on site'],
+describe('renderRoutingPost', () => {
+  it('is routing-only: numbered destinations + correction footer, no summary', () => {
+    const text = renderRoutingPost(
+      'Rebet launch sync',
       [
         { ownerType: 'zaire', ownerName: 'Zaire', description: 'Confirm budget owner', due: null },
+        { ownerType: 'arya', ownerName: 'Arya', description: 'Send the deck', due: null },
+        { ownerType: 'team', ownerName: 'Andrea', description: 'Share content calendar', due: null },
         { ownerType: 'external', ownerName: 'Rebet', description: 'Send redlines', due: '2026-08-12' },
       ],
       30,
     )
-    expect(text).toContain('*Call digest: Rebet launch sync*')
-    expect(text).toContain('• Both days on site')
-    expect(text).toContain('1. [zaire: Zaire] Confirm budget owner')
-    expect(text).toContain('2. [external: Rebet] Send redlines — by 2026-08-12')
+    expect(text).toContain('*Rebet launch sync* — routing:')
+    expect(text).toContain('1. → your Asana: Confirm budget owner')
+    expect(text).toContain('2. → Arya drafts: Send the deck')
+    expect(text).toContain('3. → delegate to Andrea: Share content calendar')
+    expect(text).toContain('4. → waiting ledger (Rebet): Send redlines — by 2026-08-12')
     expect(text).toContain('within 30 min')
+    expect(text).not.toContain('Decisions')
+    expect(text).not.toContain('Call digest')
   })
 })
 
