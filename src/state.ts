@@ -297,6 +297,28 @@ export class StateStore {
         updated_at TEXT NOT NULL
       )
     `)
+    // Voice sessions + per-call tool log (v1.4 spec §11) — nothing said aloud
+    // is lost, and misfires are debuggable.
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS voice_sessions (
+        id         TEXT PRIMARY KEY,
+        started_at TEXT NOT NULL,
+        ended_at   TEXT,
+        transcript TEXT
+      )
+    `)
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS voice_tool_calls (
+        id         INTEGER PRIMARY KEY AUTOINCREMENT,
+        session_id TEXT NOT NULL,
+        call_id    TEXT NOT NULL,
+        tool_name  TEXT NOT NULL,
+        arguments  TEXT NOT NULL,
+        result     TEXT,
+        error      TEXT,
+        created_at TEXT NOT NULL
+      )
+    `)
     // Columns added after stage 2 — migrate any pre-existing database in place.
     const columns = (this.db.pragma('table_info(threads)') as { name: string }[]).map(
       (c) => c.name,
@@ -506,6 +528,53 @@ export class StateStore {
       gid: row.gid, title: row.title, status: row.status as AryaTaskRecord['status'],
       pickedAt: row.picked_at, updatedAt: row.updated_at,
     }))
+  }
+
+  logVoiceToolCall(entry: {
+    sessionId: string
+    callId: string
+    toolName: string
+    args: unknown
+    result?: string
+    error?: string
+  }): void {
+    this.db
+      .prepare(
+        `INSERT INTO voice_sessions (id, started_at) VALUES (?, ?)
+         ON CONFLICT(id) DO NOTHING`,
+      )
+      .run(entry.sessionId, new Date().toISOString())
+    this.db
+      .prepare(
+        `INSERT INTO voice_tool_calls
+           (session_id, call_id, tool_name, arguments, result, error, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        entry.sessionId, entry.callId, entry.toolName,
+        JSON.stringify(entry.args ?? {}), entry.result ?? null, entry.error ?? null,
+        new Date().toISOString(),
+      )
+  }
+
+  saveVoiceTranscript(
+    sessionId: string,
+    transcript: { role: string; content: string; timestamp: string }[],
+  ): void {
+    this.db
+      .prepare(
+        `INSERT INTO voice_sessions (id, started_at, ended_at, transcript)
+         VALUES (?, ?, ?, ?)
+         ON CONFLICT(id) DO UPDATE SET
+           ended_at = excluded.ended_at,
+           transcript = excluded.transcript`,
+      )
+      .run(
+        sessionId,
+        transcript[0]?.timestamp ?? new Date().toISOString(),
+        new Date().toISOString(),
+        JSON.stringify(transcript),
+      )
   }
 
   isHandled(slackTs: string): boolean {
