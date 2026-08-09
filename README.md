@@ -297,13 +297,15 @@ once deployed — say "what's on my plate?", file a task, dictate a draft.
 action went through the same gates as text, so there is no voice-only state to
 unwind.
 
-**Deployment note (flagged before any deploy):** the tool handlers and
-transcript log read/write the SQLite file at `data/state.db`. On Vercel's
-serverless filesystem that file is ephemeral and NOT shared with the machine
-running the cron pipelines — tools like read_todays_digest would see an empty
-state. For v1, run `web/` on the same host as the pipelines (`npm run build &&
-npm run start` behind a tunnel/reverse proxy), or move state to a hosted DB
-before a Vercel deploy.
+**Hosting (decided 2026-08-09): self-hosted next to the pipelines.** The tool
+handlers and transcript log read/write `data/state.db`; Vercel's serverless
+filesystem is ephemeral and isolated from the pipeline host, so a Vercel deploy
+would see empty state. Instead run `./scripts/run_voice.sh` on the pipeline
+machine (builds and serves `web/` on `VOICE_PORT`, default 3100), expose it via
+a tunnel (cloudflared / `tailscale serve`), and bookmark
+`https://<host>/?k=<VOICE_SHARED_SECRET>` — first visit sets the cookie, then
+install to the home screen. Revisit Vercel only after state moves to a hosted
+DB (v1.5 candidate).
 
 ### Audio digest + voice approval (hands-free loop)
 
