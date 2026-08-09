@@ -32,11 +32,15 @@ export async function POST(request: Request) {
           output: { voice: process.env.VOICE_ID ?? 'sage' },
           input: {
             transcription: { model: 'whisper-1' },
+            // Ambient sound (street noise on a walk) must not read as "still
+            // speaking" — near_field suits a phone held close (live feedback,
+            // 2026-08-09 session 3: she never took her turn outdoors).
+            noise_reduction: { type: 'near_field' },
             // Semantic VAD: the model judges when Zaire has FINISHED A THOUGHT
-            // instead of counting milliseconds of silence — this is what makes
-            // ChatGPT's voice mode wait through pauses and "um"s rather than
-            // jumping in (live feedback, 2026-08-09). 'low' eagerness = most
-            // patient. Set VOICE_TURN_DETECTION=server_vad to fall back.
+            // instead of counting milliseconds of silence (what makes ChatGPT
+            // voice wait through pauses). 'low' never concluded he was done in
+            // noise; 'medium' is the balance. Tune via VOICE_TURN_EAGERNESS;
+            // VOICE_TURN_DETECTION=server_vad falls back to silence-based.
             turn_detection:
               process.env.VOICE_TURN_DETECTION === 'server_vad'
                 ? {
@@ -47,7 +51,7 @@ export async function POST(request: Request) {
                   }
                 : {
                     type: 'semantic_vad',
-                    eagerness: process.env.VOICE_TURN_EAGERNESS ?? 'low',
+                    eagerness: process.env.VOICE_TURN_EAGERNESS ?? 'medium',
                   },
           },
         },
