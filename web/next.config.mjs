@@ -11,6 +11,12 @@ const nextConfig = {
     '/api/session': ['../agent/**'],
     '/api/tool-call': ['../agent/**'],
   },
+  // The parent repo uses NodeNext-style `.js` specifiers in TypeScript —
+  // teach webpack to resolve them to .ts sources.
+  webpack: (config) => {
+    config.resolve.extensionAlias = { '.js': ['.ts', '.tsx', '.js'] }
+    return config
+  },
 }
 
 export default nextConfig
