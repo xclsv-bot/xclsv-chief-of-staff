@@ -1,9 +1,11 @@
-// POST /api/session — mints an ephemeral OpenAI Realtime session (spec §7).
-// The browser never sees OPENAI_API_KEY; it gets a short-lived client secret
-// scoped to one session. System prompt + tool schemas are wired in build step 6.
+// POST /api/session — mints an ephemeral OpenAI Realtime session (spec §7)
+// with the Arya system prompt (agent files) and tool schemas. The browser
+// never sees OPENAI_API_KEY; it gets a short-lived client secret.
 
 import { NextResponse } from 'next/server'
 import { checkAuth } from '@/lib/auth'
+import { buildVoiceSystemPrompt } from '../../../../src/voice/session'
+import { toolSchemas } from '../../../../src/voice/tools'
 
 export async function POST(request: Request) {
   if (!(await checkAuth(request))) {
@@ -19,9 +21,9 @@ export async function POST(request: Request) {
     body: JSON.stringify({
       model: process.env.OPENAI_REALTIME_MODEL ?? 'gpt-4o-realtime-preview-2024-12-17',
       voice: process.env.VOICE_ID ?? 'sage',
-      instructions:
-        'You are Arya, chief of staff to Zaire Williams. Tool wiring is not yet ' +
-        'live in this build — converse briefly and say tools are coming online.',
+      instructions: buildVoiceSystemPrompt(),
+      tools: toolSchemas,
+      tool_choice: 'auto',
       input_audio_transcription: { model: 'whisper-1' },
       turn_detection: { type: 'server_vad', threshold: 0.5 },
     }),

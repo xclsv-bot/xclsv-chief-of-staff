@@ -5,6 +5,12 @@ const nextConfig = {
   experimental: { externalDir: true },
   // Native/node-only packages the serverless bundle must not try to bundle.
   serverExternalPackages: ['better-sqlite3', 'googleapis', '@slack/web-api', '@anthropic-ai/sdk'],
+  // The system prompt reads agent/*.md from the parent repo at runtime — make
+  // sure serverless output tracing carries them along.
+  outputFileTracingIncludes: {
+    '/api/session': ['../agent/**'],
+    '/api/tool-call': ['../agent/**'],
+  },
 }
 
 export default nextConfig
