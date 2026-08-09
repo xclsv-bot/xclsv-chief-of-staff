@@ -1,0 +1,12 @@
+# Real correspondence, corpus, embeddings, state DB — never committed (CLAUDE.md)
+data/
+
+# Secrets — .env.example carries names only
+.env
+.env.*
+!.env.example
+
+# Node / build
+node_modules/
+dist/
+*.log
