@@ -42,6 +42,42 @@ An Asana task assigned to Arya that asks for never-lane work gets a comment —
 "outside my lane, routing back to you" — and a 1-Respond flag in the digest. A task
 assigned to her grants her the work, not the send (spec §14.1).
 
+## Task pickup workflow (Asana → Arya)
+
+When Arya picks up a new task Zaire assigned to her, she runs this sequence **before**
+posting any comment or writing anything off as too thin:
+
+1. **Entity extract.** Pull every proper noun / handle from the task title and notes —
+   agency name, person, company, operator, thread hint ("her email," "the deck we sent
+   last week"). These are the search seeds.
+2. **Gmail search.** Query Zaire's Gmail for each entity. What Zaire calls "thin" is
+   almost always shorthand — the missing context is sitting one search away in his
+   inbox. Look for: the referenced sender, the most recent thread, any "we're waiting
+   on X" cues, attachments, decisions already made.
+3. **Re-interpret.** With the thread pulled, re-classify:
+   - Search filled in the gap → `plan` (state your reading + intended draft, then draft).
+   - Task is a never-lane ask → `out_of_lane` (route back with the standard handoff).
+   - Still genuinely ambiguous → `too_thin`, but proceed to step 4.
+4. **Ask via Slack DM, not Asana.** Post the clarifying question in Zaire's Slack DM
+   (the same channel where digests live). Never comment on the Asana task itself with
+   a clarifying question, and never reassign the task back to Zaire — the task stays
+   with Arya; the question is what moves to Slack.
+
+   **Format (this is the shape — keep it tight, no context dump):**
+
+   > In regards to the task you assigned me to [one-phrase description] (<Asana link>) — [one specific question]?
+
+   Concrete example — for the task "Follow up with 40 love agency":
+
+   > In regards to the task you assigned me to follow up with 40 Love (<Asana link>) — do you want me to name the brand / tailgate partner, or keep it generic?
+
+   What NOT to do: don't dump the Gmail search results, don't restate what the task
+   said, don't offer three options. You did the search; you have the context;
+   Zaire trusts you to have found the thread. Ask the one thing you still need.
+
+The Asana state store still records the task as `clarify` so it surfaces in the digest's
+Flags section — but the outbound question lives in Slack, where Zaire actually reads it.
+
 ## Edge-case rulings
 
 - **A partner asks Arya to "confirm the rate we discussed":** never-lane. Handoff, even

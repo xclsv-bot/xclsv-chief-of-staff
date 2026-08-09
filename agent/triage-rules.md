@@ -40,12 +40,41 @@ For each new or updated thread:
 8. **Anything left, or confidence low?** → 1-Respond with "(low confidence)" in the
    digest line. Respond beats Review on any tie.
 
+## Cold-outbound archive signals
+
+The default "unknown sender → 1-Respond (low confidence)" tie-breaker is
+over-conservative. Override it and **Archive** when *all* of the following are true:
+
+1. **Unknown sender** — no prior thread in Zaire's mailbox, not on the VIP list,
+   sender domain has no history with XCLSV.
+2. **No XCLSV / iGaming / operator / affiliate relevance** — subject and body do
+   not mention XCLSV, an operator (DK/FD/BetMGM/Caesars/Fanatics/Rebet/Polymarket),
+   MLR, iGaming, affiliate marketing, event activations, ambassador programs, or
+   any active deal counterparty.
+3. **Boilerplate pitch structure** — one of:
+   - Cold sales pitch for a generic service (SEO, PR/press placement, LinkedIn
+     lead gen, email copywriting, cold-outbound-as-a-service, "get you in the
+     news," "grow your MRR," accounting/bookkeeping, coaching/community).
+   - Unsolicited capital / lending / investment pitch to an unknown recipient.
+   - Newsletter/promo/webinar invite from a vendor with no relationship.
+   - Recruiter cold outreach for an unrelated role.
+   - Subject line uses "Exclusive" as if it were the company name (common cold-
+     outbound personalization mistake — XCLSV is not "Exclusive Media").
+4. **No direct question requiring Zaire's judgment** — a rate ask on an active
+   deal is not cold outbound; "just wanted to introduce myself" is.
+
+If **any** of 1–4 fails, fall back to the default (1-Respond low confidence). When
+in doubt, still Respond — but a clean cold outbound with no hook to XCLSV's
+business belongs in Archive.
+
 ## Edge cases
 
 - **Contracts & attachment-heavy threads:** 1-Respond with a "needs reading" tag in the
   digest. Never auto-draft substantive replies to legal documents.
-- **Unknown new sender with a pitch:** 1-Respond, low-confidence flag. Never
-  auto-archived — could be inbound deal flow.
+- **First contact from a plausibly relevant partner:** 1-Respond, low-confidence
+  flag. This is a genuine inbound lead (iGaming vendor, operator contact, agency
+  cross-sell) — never auto-archived. Cold-outbound archive signals above apply
+  only when the pitch is generic AND has no iGaming/XCLSV/operator hook.
 - **Gmail API failure / rate limit:** retry with backoff; if a full sweep fails, post one
   alert line in Slack rather than failing silently.
 - **Stale digest actions:** if Zaire acts on an item already resolved, reply
