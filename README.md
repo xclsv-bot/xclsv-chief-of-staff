@@ -288,6 +288,12 @@ hand back the turn) instead of reading digest lines aloud. Zaire tunes it by
 editing the markdown; sources from OpenAI/ElevenLabs voice-agent guidance are
 footnoted in the file.
 
+**Mic permission (one-time):** Safari re-asks for the microphone on every visit
+by default. Fix: on iPhone open the page → ᴀA in the address bar → Website
+Settings → Microphone → Allow — or better, Share → Add to Home Screen and allow
+the mic once in the installed PWA (installed web apps keep their own grant).
+Both are pinned to the domain, so the stable Tailscale URL matters.
+
 **How to run:** `cd web && npm install && npm run dev`, then open
 `http://localhost:3000/?k=<VOICE_SHARED_SECRET>` once (sets the cookie). Env
 vars go in `web/.env.local` (or the deploy platform): the voice block from
