@@ -106,6 +106,57 @@ populated `data/state.db` should read like spec §4's example.
 Digest posts are plain Slack messages; deleting them loses nothing (state lives in
 `data/state.db`).
 
+### Stage 4 — Voice memo → parse → draft → approval gate
+
+**What landed:** `src/pipelines/memo.ts` (the `#inbox-gps` poller), `src/pipelines/draft.ts`
+(draft generation + mechanical hard-rule backstops), `src/transcribe.ts` (Whisper on
+Slack voice notes — the plumbing shared with the Agenda Agent), and Gmail reply-draft
+creation (`drafts.create` with proper In-Reply-To threading — still no send path).
+
+The loop (spec §5–7): Zaire replies to a digest in Slack — batched voice memo or text.
+The poller transcribes, parses the voice-command grammar per item (Tell/Reply, Push,
+Skip, Archive, Delegate, Nudge) against the stored digest numbering, and executes:
+replies/delegations/nudges become drafts posted as threaded replies (header line first,
+so a wrong-thread draft is visually obvious), snoozes set resurface dates, archives hit
+Gmail. A ✅ reaction from Zaire finalizes the draft in Gmail Drafts on the correct
+thread and confirms "Draft ready in Gmail — send when ready." A further reply with
+changes supersedes and regenerates. Nothing is ever auto-approved; drafts pending past
+24h surface in the digest's Flags section.
+
+**Guardrails in code, not vibes:** only messages from `ZAIRE_SLACK_USER_ID` are parsed
+as instructions (hard rule 5). The numbers rule has a mechanical backstop —
+`validateDraft` regex-scans every draft for dollar figures/percentages/`50k`-style
+tokens not present in Zaire's memo and warns loudly in the approval post, plus a
+wrong-recipient check against thread participants. Ambiguous instructions produce a
+"Did you mean #2 or #5?" question, never a guess; later memos win per item; duplicate
+actions on an already-handled item get "already handled at [time]."
+
+**Slack app additions (once):** add bot scopes `files:read` and `reactions:read`
+(alongside `chat:write`, `channels:history`), reinstall the app, and set
+`ZAIRE_SLACK_USER_ID` (Slack profile → ⋯ → Copy member ID) and `OPENAI_API_KEY`
+(Whisper) in `.env`.
+
+**How to run:**
+
+```
+npm run inbox -- --dry-run        # transcribes + parses, prints intended actions
+npm run inbox                     # executes: posts drafts, applies ✅ approvals
+```
+
+Poll every few minutes during working hours, e.g. cron (`TZ=America/Los_Angeles`):
+`*/5 7-19 * * * cd <repo> && npm run inbox`.
+
+**How to verify:** `npm test` (grammar parsing, later-wins, business-day snooze math,
+numbers-rule backstop, recipient guard, MIME threading, draft state machine, stale-draft
+flags). End-to-end: reply to a digest with "reply to 1 — tell them yes" as text, watch
+the draft appear in-thread, react ✅, and find the draft in Gmail Drafts on the right
+thread. Voice path: same, as a Slack voice note.
+
+**How to roll back:** stop the inbox cron entry. Pending drafts are just Slack posts +
+DB rows; Gmail drafts created by approvals are visible in the Drafts folder and can be
+discarded by hand (the agent itself never deletes). `data/state.db` remains the single
+source of state.
+
 ## Repo layout
 
 See the layout block in `CLAUDE.md`. Behavior lives in `agent/` (markdown, tuned by

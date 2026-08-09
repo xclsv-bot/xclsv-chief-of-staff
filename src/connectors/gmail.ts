@@ -23,6 +23,8 @@ export interface MessageSummary {
   to: string
   cc: string
   date: string
+  /** RFC 2822 Message-ID header — threading anchor for reply drafts. */
+  rfcMessageId: string
   body: string
   attachments: string[]
 }
@@ -174,6 +176,7 @@ export async function fetchThread(
     to: header(m, 'To'),
     cc: header(m, 'Cc'),
     date: header(m, 'Date'),
+    rfcMessageId: header(m, 'Message-ID'),
     body: extractText(m.payload).trim().slice(0, 1500),
     attachments: listAttachments(m.payload),
   }))
@@ -183,4 +186,54 @@ export async function fetchThread(
     subject: first ? header(first, 'Subject') : '',
     messages,
   }
+}
+
+export interface ReplyDraftOptions {
+  to: string
+  cc?: string
+  subject: string
+  body: string
+  /** Message-ID of the message being replied to — keeps Gmail threading intact. */
+  inReplyTo?: string
+}
+
+/** Plain-text RFC 2822 message, base64url-encoded for the Gmail API. */
+export function buildReplyMime(opts: ReplyDraftOptions): string {
+  const headers = [
+    `To: ${opts.to}`,
+    opts.cc ? `Cc: ${opts.cc}` : null,
+    `Subject: ${opts.subject}`,
+    opts.inReplyTo ? `In-Reply-To: ${opts.inReplyTo}` : null,
+    opts.inReplyTo ? `References: ${opts.inReplyTo}` : null,
+    'Content-Type: text/plain; charset="UTF-8"',
+    'MIME-Version: 1.0',
+  ].filter((h): h is string => h !== null)
+  return Buffer.from(`${headers.join('\r\n')}\r\n\r\n${opts.body}`, 'utf8').toString(
+    'base64url',
+  )
+}
+
+/**
+ * The approval gate's terminal action (spec §7.3): finalize an approved draft in
+ * Gmail Drafts, attached to the correct thread. Creating a draft is the ONLY
+ * outbound capability this connector has — the human click to send is the final
+ * control.
+ */
+export async function createReplyDraft(
+  gmail: gmail_v1.Gmail,
+  threadId: string,
+  opts: ReplyDraftOptions,
+): Promise<string> {
+  const res = await withRetry(() =>
+    gmail.users.drafts.create({
+      userId: 'me',
+      requestBody: {
+        message: {
+          threadId,
+          raw: buildReplyMime(opts),
+        },
+      },
+    }),
+  )
+  return res.data.id ?? ''
 }

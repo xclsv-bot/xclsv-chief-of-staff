@@ -39,6 +39,30 @@ export interface DigestRecord {
   items: DigestItemRef[]
 }
 
+export type DraftKind = 'reply' | 'delegation' | 'nudge'
+export type DraftRecordStatus = 'pending' | 'approved' | 'superseded'
+
+export interface DraftRecord {
+  id: number
+  threadId: string
+  kind: DraftKind
+  status: DraftRecordStatus
+  body: string
+  toAddr: string | null
+  ccAddr: string | null
+  subject: string | null
+  headerLine: string | null
+  instruction: string | null
+  channel: string | null
+  /** ts of the Slack message carrying this draft (the ✅ target). */
+  slackTs: string | null
+  /** ts of the digest this draft was posted under. */
+  digestSlackTs: string | null
+  itemNumber: number | null
+  createdAt: string
+  updatedAt: string
+}
+
 interface ThreadRow {
   thread_id: string
   label: string
@@ -55,6 +79,46 @@ interface ThreadRow {
   reason: string | null
   digest_line: string | null
   updated_at: string
+}
+
+interface DraftRow {
+  id: number
+  thread_id: string
+  kind: string
+  status: string
+  body: string
+  to_addr: string | null
+  cc_addr: string | null
+  subject: string | null
+  header_line: string | null
+  instruction: string | null
+  channel: string | null
+  slack_ts: string | null
+  digest_slack_ts: string | null
+  item_number: number | null
+  created_at: string
+  updated_at: string
+}
+
+function toDraft(row: DraftRow): DraftRecord {
+  return {
+    id: row.id,
+    threadId: row.thread_id,
+    kind: row.kind as DraftKind,
+    status: row.status as DraftRecordStatus,
+    body: row.body,
+    toAddr: row.to_addr,
+    ccAddr: row.cc_addr,
+    subject: row.subject,
+    headerLine: row.header_line,
+    instruction: row.instruction,
+    channel: row.channel,
+    slackTs: row.slack_ts,
+    digestSlackTs: row.digest_slack_ts,
+    itemNumber: row.item_number,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }
 }
 
 function toState(row: ThreadRow): ThreadState {
@@ -110,6 +174,33 @@ export class StateStore {
         channel   TEXT NOT NULL,
         slack_ts  TEXT NOT NULL,
         items     TEXT NOT NULL
+      )
+    `)
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS drafts (
+        id             INTEGER PRIMARY KEY AUTOINCREMENT,
+        thread_id      TEXT NOT NULL,
+        kind           TEXT NOT NULL,
+        status         TEXT NOT NULL,
+        body           TEXT NOT NULL,
+        to_addr        TEXT,
+        cc_addr        TEXT,
+        subject        TEXT,
+        header_line    TEXT,
+        instruction    TEXT,
+        channel        TEXT,
+        slack_ts       TEXT,
+        digest_slack_ts TEXT,
+        item_number    INTEGER,
+        created_at     TEXT NOT NULL,
+        updated_at     TEXT NOT NULL
+      )
+    `)
+    // Slack messages already acted on — the poller's idempotency ledger.
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS handled_slack (
+        slack_ts   TEXT PRIMARY KEY,
+        handled_at TEXT NOT NULL
       )
     `)
     // Columns added after stage 2 — migrate any pre-existing database in place.
@@ -188,17 +279,73 @@ export class StateStore {
   }
 
   latestDigest(): DigestRecord | undefined {
-    const row = this.db
-      .prepare('SELECT * FROM digests ORDER BY id DESC LIMIT 1')
-      .get() as { id: number; posted_at: string; channel: string; slack_ts: string; items: string } | undefined
-    if (!row) return undefined
-    return {
+    return this.digestsSince('')[0]
+  }
+
+  /** Digests posted at/after the ISO timestamp, newest first. */
+  digestsSince(sinceIso: string): DigestRecord[] {
+    const rows = this.db
+      .prepare('SELECT * FROM digests WHERE posted_at >= ? ORDER BY id DESC')
+      .all(sinceIso) as { id: number; posted_at: string; channel: string; slack_ts: string; items: string }[]
+    return rows.map((row) => ({
       id: row.id,
       postedAt: row.posted_at,
       channel: row.channel,
       slackTs: row.slack_ts,
       items: JSON.parse(row.items) as DigestItemRef[],
-    }
+    }))
+  }
+
+  createDraft(draft: Omit<DraftRecord, 'id' | 'createdAt' | 'updatedAt'>): number {
+    const now = new Date().toISOString()
+    const result = this.db
+      .prepare(
+        `INSERT INTO drafts (
+           thread_id, kind, status, body, to_addr, cc_addr, subject, header_line,
+           instruction, channel, slack_ts, digest_slack_ts, item_number,
+           created_at, updated_at
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        draft.threadId, draft.kind, draft.status, draft.body, draft.toAddr,
+        draft.ccAddr, draft.subject, draft.headerLine, draft.instruction,
+        draft.channel, draft.slackTs, draft.digestSlackTs, draft.itemNumber,
+        now, now,
+      )
+    return Number(result.lastInsertRowid)
+  }
+
+  setDraftStatus(id: number, status: DraftRecordStatus): void {
+    this.db
+      .prepare('UPDATE drafts SET status = ?, updated_at = ? WHERE id = ?')
+      .run(status, new Date().toISOString(), id)
+  }
+
+  draftsByStatus(status: DraftRecordStatus): DraftRecord[] {
+    const rows = this.db
+      .prepare('SELECT * FROM drafts WHERE status = ? ORDER BY id')
+      .all(status) as DraftRow[]
+    return rows.map(toDraft)
+  }
+
+  draftsForThread(threadId: string): DraftRecord[] {
+    const rows = this.db
+      .prepare('SELECT * FROM drafts WHERE thread_id = ? ORDER BY id')
+      .all(threadId) as DraftRow[]
+    return rows.map(toDraft)
+  }
+
+  isHandled(slackTs: string): boolean {
+    return (
+      this.db.prepare('SELECT 1 FROM handled_slack WHERE slack_ts = ?').get(slackTs) !==
+      undefined
+    )
+  }
+
+  markHandled(slackTs: string): void {
+    this.db
+      .prepare('INSERT OR IGNORE INTO handled_slack (slack_ts, handled_at) VALUES (?, ?)')
+      .run(slackTs, new Date().toISOString())
   }
 
   close(): void {

@@ -18,6 +18,7 @@ function msg(partial: Partial<MessageSummary> & { from: string; body: string }):
     to: ZAIRE,
     cc: '',
     date: 'Fri, 7 Aug 2026 09:00:00 -0700',
+    rfcMessageId: `<m${nextMessageId}@mail.example.com>`,
     attachments: [],
     ...partial,
   }

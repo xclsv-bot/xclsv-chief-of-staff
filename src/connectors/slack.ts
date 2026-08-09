@@ -9,6 +9,80 @@ export function slackClient(token: string): WebClient {
   return new WebClient(token)
 }
 
+export interface SlackFileRef {
+  id: string
+  name: string
+  mimetype: string
+  urlPrivate: string
+}
+
+export interface SlackMessage {
+  ts: string
+  threadTs: string | null
+  user: string | null
+  text: string
+  files: SlackFileRef[]
+  /** emoji name → user IDs who reacted */
+  reactions: Record<string, string[]>
+}
+
+interface RawMessage {
+  ts?: string
+  thread_ts?: string
+  user?: string
+  bot_id?: string
+  text?: string
+  files?: { id?: string; name?: string; mimetype?: string; url_private?: string }[]
+  reactions?: { name?: string; users?: string[] }[]
+}
+
+function toMessage(raw: RawMessage): SlackMessage {
+  return {
+    ts: raw.ts ?? '',
+    threadTs: raw.thread_ts ?? null,
+    user: raw.user ?? null,
+    text: raw.text ?? '',
+    files: (raw.files ?? []).map((f) => ({
+      id: f.id ?? '',
+      name: f.name ?? '',
+      mimetype: f.mimetype ?? '',
+      urlPrivate: f.url_private ?? '',
+    })),
+    reactions: Object.fromEntries(
+      (raw.reactions ?? []).map((r) => [r.name ?? '', r.users ?? []]),
+    ),
+  }
+}
+
+export async function fetchHistory(
+  client: WebClient,
+  channel: string,
+  oldestTs: string,
+): Promise<SlackMessage[]> {
+  const res = await client.conversations.history({ channel, oldest: oldestTs, limit: 200 })
+  return ((res.messages ?? []) as RawMessage[]).map(toMessage).sort((a, b) =>
+    a.ts.localeCompare(b.ts),
+  )
+}
+
+export async function fetchReplies(
+  client: WebClient,
+  channel: string,
+  threadTs: string,
+): Promise<SlackMessage[]> {
+  const res = await client.conversations.replies({ channel, ts: threadTs, limit: 200 })
+  return ((res.messages ?? []) as RawMessage[]).map(toMessage).sort((a, b) =>
+    a.ts.localeCompare(b.ts),
+  )
+}
+
+/** Download a Slack file (voice note) — needs the files:read bot scope. */
+export async function downloadFile(urlPrivate: string, token: string): Promise<Buffer> {
+  const res = await fetch(urlPrivate, { headers: { Authorization: `Bearer ${token}` } })
+  if (!res.ok) throw new Error(`Slack file download failed: ${res.status}`)
+  return Buffer.from(await res.arrayBuffer())
+}
+
 /** Post a top-level message; returns its ts (the thread anchor). */
 export async function postMessage(
   client: WebClient,

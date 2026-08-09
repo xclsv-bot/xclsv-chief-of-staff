@@ -9,7 +9,20 @@
 
 import { optionalEnv, requireEnv } from '../config.js'
 import { postMessage, slackClient } from '../connectors/slack.js'
-import { StateStore, type DigestItemRef, type ThreadState } from '../state.js'
+import {
+  StateStore,
+  type DigestItemRef,
+  type DraftRecord,
+  type ThreadState,
+} from '../state.js'
+
+/** Spec §7.4: drafts unapproved after 24h surface in Flags. Never auto-approved. */
+export function staleDraftFlags(pending: DraftRecord[], now: Date): string[] {
+  const cutoff = new Date(now.getTime() - 24 * 3_600_000).toISOString()
+  return pending
+    .filter((d) => d.createdAt <= cutoff)
+    .map((d) => `Draft unapproved 24h+: ${d.headerLine ?? d.subject ?? d.threadId}`)
+}
 
 export const GMAIL_THREAD_URL = 'https://mail.google.com/mail/u/0/#all/'
 
@@ -151,6 +164,7 @@ async function run(dryRun: boolean): Promise<void> {
     now,
     nudgeThresholdDays: Number(optionalEnv('NUDGE_THRESHOLD_DAYS', '3')),
     reviewRollupCount,
+    extraFlags: staleDraftFlags(store.draftsByStatus('pending'), now),
   })
 
   if (digest.empty) {
