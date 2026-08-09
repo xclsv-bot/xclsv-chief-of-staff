@@ -28,7 +28,7 @@ import {
 import { StateStore, type CallActionItem, type CallRecord } from '../state.js'
 import { asanaConfigFromEnv, routeZaireTask } from './asana_router.js'
 import { generateDraft, loadDraftFiles, validateDraft, buildDraftPost } from './draft.js'
-import { APPROVE_EMOJI } from './memo.js'
+import { APPROVE_EMOJI } from '../lib/approvals.js'
 
 const OWNER_TYPES = ['zaire', 'arya', 'team', 'external'] as const
 

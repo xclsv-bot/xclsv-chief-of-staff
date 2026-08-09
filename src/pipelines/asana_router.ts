@@ -20,7 +20,7 @@ import {
 import { postAlert } from '../connectors/slack.js'
 import { StateStore, type AryaTaskRecord } from '../state.js'
 import { businessDaysBetween } from './digest.js'
-import { addBusinessDays } from './memo.js'
+import { addBusinessDays } from '../lib/business-days.js'
 
 // ── Dedupe (spec §14: "no more three copies of the same Dev Huddle task") ───
 
