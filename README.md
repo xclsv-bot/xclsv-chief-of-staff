@@ -30,6 +30,45 @@ should match). No code runs yet.
 **Tuning:** Zaire edits `agent/*.md` directly — the VIP list in `triage-rules.md` is
 expected to change during shadow labeling.
 
+### Stage 2 — Gmail connector + triage pipeline (shadow labeling)
+
+**What landed:** `src/connectors/gmail.ts` (draft-only connector: list/read threads,
+ensure + apply GPS labels, archive — no send or delete code path exists, enforced by
+`tests/gmail-guard.test.ts`), `src/state.ts` (SQLite at `data/state.db`),
+`src/pipelines/classify.ts` (LLM classifier prompted with `agent/ARYA.md` +
+`label-taxonomy.md` + `triage-rules.md` loaded at runtime), and
+`src/pipelines/triage.ts` (the hourly sweep). Mechanical calls — Zaire-replied-last →
+3-Waiting, inbound-on-3-Waiting → reclassify + nudge reset, already-triaged → skip —
+are deterministic code; only judgment calls go to the model. 3-Waiting is never
+assigned by the model.
+
+**How to run:**
+
+```
+./scripts/setup.sh                # deps, data/, .env from template
+npm run auth:gmail                # once: prints the Gmail refresh token for .env
+npm run sweep -- --dry-run        # logs intended labels, touches nothing
+npm run sweep                     # shadow labeling: label writes ON, nothing else
+```
+
+Scope note: Gmail's scope granularity can't express "labels + drafts but not send" —
+the connector uses `gmail.modify` (the narrowest usable scope) and the no-send/no-delete
+rule is enforced structurally in code and by the guard tests.
+
+For the hourly cadence (7am–7pm PT, spec §2), schedule externally, e.g. cron:
+`0 7-19 * * * cd <repo> && npm run sweep`.
+
+**How to verify:** `npm test` (deterministic layer, label mutual exclusivity, no-send
+guard, state store, fixture coverage — no network). `npm run test:eval` runs the 24
+judgment fixtures against the live API (needs `ANTHROPIC_API_KEY`; costs a few cents).
+During shadow labeling days 1–4, spot-check Gmail against the pass criteria in spec
+§11: >90% of 1-Respond genuinely needs Zaire; zero partner/deal-flow email buried in
+2-Review or archived.
+
+**How to roll back:** stop the cron entry; labels are plain Gmail labels (removable in
+Gmail, or delete them entirely); `rm data/state.db` resets all agent state. Archived
+threads are recoverable from All Mail — nothing is ever deleted.
+
 ## Repo layout
 
 See the layout block in `CLAUDE.md`. Behavior lives in `agent/` (markdown, tuned by
