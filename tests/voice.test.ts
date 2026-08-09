@@ -26,9 +26,12 @@ describe('tool dispatch (spec §5.6)', () => {
   })
 
   it('turns handler errors into voice-friendly strings, not throws', async () => {
-    // create_task with no env configured fails inside the handler → friendly retry line.
-    const result = await executeToolCall('create_task', { title: 'x', description: 'y' })
+    // Missing required title hits the handler's own input guard — no live API
+    // call to Asana. (Prior version passed a valid title, which filed a real
+    // task when .env was populated. Never test with mutating side effects.)
+    const result = await executeToolCall('create_task', {})
     expect(result).toContain("didn't go through")
+    expect(result).toContain('the task needs a title')
     expect(result).not.toMatch(/\n\s+at /) // no stack traces read aloud
   })
 })

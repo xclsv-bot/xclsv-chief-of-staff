@@ -3,10 +3,11 @@
 // regardless (they hold nothing sensitive); every /api route checks auth.
 
 import { NextResponse, type NextRequest } from 'next/server'
+import { keyMatches } from './lib/secret'
 
 export function middleware(request: NextRequest) {
   const key = request.nextUrl.searchParams.get('k')
-  if (key && key === process.env.VOICE_SHARED_SECRET) {
+  if (keyMatches(key, process.env.VOICE_SHARED_SECRET)) {
     const clean = request.nextUrl.clone()
     clean.searchParams.delete('k')
     const response = NextResponse.redirect(clean)

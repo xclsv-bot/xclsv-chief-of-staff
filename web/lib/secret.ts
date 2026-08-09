@@ -1,7 +1,16 @@
-/** Pure shared-secret comparison — kept free of Next.js imports for testing. */
+import { timingSafeEqual } from 'node:crypto'
+
+/**
+ * Constant-time shared-secret comparison. Kept free of Next.js imports so it
+ * can be unit-tested from the repo-root vitest suite.
+ */
 export function keyMatches(
   key: string | null | undefined,
   secret: string | undefined,
 ): boolean {
-  return !!secret && !!key && key === secret
+  if (!secret || !key) return false
+  const a = Buffer.from(key)
+  const b = Buffer.from(secret)
+  if (a.length !== b.length) return false
+  return timingSafeEqual(a, b)
 }
