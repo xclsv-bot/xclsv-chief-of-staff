@@ -188,6 +188,18 @@ export async function fetchThread(
   }
 }
 
+/** Thread ids matching an arbitrary Gmail query (read-only; voice search). */
+export async function searchThreadIds(
+  gmail: gmail_v1.Gmail,
+  query: string,
+  max = 5,
+): Promise<string[]> {
+  const res = await withRetry(() =>
+    gmail.users.threads.list({ userId: 'me', q: query, maxResults: max }),
+  )
+  return (res.data.threads ?? []).flatMap((t) => (t.id ? [t.id] : []))
+}
+
 /** List message ids matching a Gmail query (paginated), e.g. the Sent folder. */
 export async function listMessageIds(
   gmail: gmail_v1.Gmail,
