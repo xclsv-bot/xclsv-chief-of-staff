@@ -235,6 +235,15 @@ async function makeDraft(
   threadId: string,
   prior?: DraftRecord,
 ): Promise<void> {
+  if (threadId.startsWith('call:')) {
+    // Call-ledger commitments have no Gmail thread to reply on.
+    await say(
+      rt,
+      digest.slackTs,
+      `That item is a call commitment with no email thread behind it — tell me who to email and what to say and I'll draft fresh.`,
+    )
+    return
+  }
   const thread = await fetchThread(rt.gmail, threadId)
   const kind =
     action.verb === 'delegate' ? 'delegation' : action.verb === 'nudge' ? 'nudge' : 'reply'
@@ -374,9 +383,22 @@ async function executeAction(
       await makeDraft(rt, digest, action, item.threadId, prior)
       return
     }
-    case 'reply':
-    case 'delegate':
     case 'nudge': {
+      // Spec §5: "Nudge / Send the follow-up" approves the PRE-drafted nudge.
+      const preDraft = rt.store
+        .draftsForThread(item.threadId)
+        .filter((d) => d.status === 'pending' && d.kind === 'nudge')
+        .at(-1)
+      if (preDraft) {
+        await finalizeApproval(rt, preDraft)
+        return
+      }
+      // No pre-draft (thread crossed threshold between scans) — draft one now.
+      await makeDraft(rt, digest, action, item.threadId)
+      return
+    }
+    case 'reply':
+    case 'delegate': {
       // Duplicate-action guard (spec §10): don't double-draft a finished item.
       const approved = rt.store
         .draftsForThread(item.threadId)
@@ -414,6 +436,15 @@ async function finalizeApproval(rt: Runtime, draft: DraftRecord): Promise<void> 
     inReplyTo: newest?.rfcMessageId || undefined,
   })
   rt.store.setDraftStatus(draft.id, 'approved')
+  // Spec §8: approving a nudge counts it. After 2, the thread escalates to
+  // Flags and the engine never drafts a third. The waiting clock resets when
+  // the sweep sees the sent nudge as the newest outbound.
+  if (draft.kind === 'nudge') {
+    const threadState = rt.store.get(draft.threadId)
+    if (threadState) {
+      rt.store.upsert({ ...threadState, nudgeCount: threadState.nudgeCount + 1 })
+    }
+  }
   await postThreadReply(
     rt.slack,
     rt.channel,

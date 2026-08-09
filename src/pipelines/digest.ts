@@ -203,13 +203,17 @@ async function run(dryRun: boolean): Promise<void> {
     ? store.byLabel('2-Review').filter((t) => t.updatedAt >= weekAgo).length
     : null
 
+  const { aryaTaskFlags } = await import('./asana_router.js')
   const digest = buildDigest({
     respond: store.byLabel('1-Respond'),
     waiting: store.byLabel('3-Waiting'),
     now,
     nudgeThresholdDays: Number(optionalEnv('NUDGE_THRESHOLD_DAYS', '3')),
     reviewRollupCount,
-    extraFlags: staleDraftFlags(store.draftsByStatus('pending'), now),
+    extraFlags: [
+      ...staleDraftFlags(store.draftsByStatus('pending'), now),
+      ...aryaTaskFlags(store.allAryaTasks(), now),
+    ],
   })
 
   if (digest.empty) {
@@ -229,6 +233,35 @@ async function run(dryRun: boolean): Promise<void> {
     const ts = await postMessage(client, channel, digest.text)
     store.saveDigest(channel, ts, digest.items)
     console.log(`digest posted (${digest.items.length} items, ts=${ts})`)
+
+    // Pre-drafted nudges (spec §8/§4B): post each under its Ready Nudges item so
+    // "nudge 4" / "approve 4" / ✅ can send it through the standard gate.
+    const nudgeDrafts = store
+      .draftsByStatus('pending')
+      .filter((d) => d.kind === 'nudge' && d.slackTs === null)
+    for (const item of digest.items.filter((i) => i.section === 'ready_nudges')) {
+      const draft = nudgeDrafts.find((d) => d.threadId === item.threadId)
+      if (!draft) continue
+      const { buildDraftPost } = await import('./draft.js')
+      const post = buildDraftPost(
+        {
+          to: draft.toAddr ?? '',
+          cc: draft.ccAddr ?? '',
+          subject: draft.subject ?? '',
+          body: draft.body,
+          headerLine: `#${item.number} · ${draft.headerLine ?? draft.subject ?? ''}`,
+        },
+        draft.warnings ?? [],
+      )
+      const { postThreadReply } = await import('../connectors/slack.js')
+      const draftTs = await postThreadReply(client, channel, ts, post)
+      store.setDraftSlackRefs(draft.id, {
+        channel,
+        slackTs: draftTs,
+        digestSlackTs: ts,
+        itemNumber: item.number,
+      })
+    }
 
     // Audio digest: same rundown, for the ear (dog walks, the car). Optional —
     // configured via ELEVENLABS_API_KEY — and never allowed to sink the digest.

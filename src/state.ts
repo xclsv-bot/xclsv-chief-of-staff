@@ -53,6 +53,8 @@ export interface DraftRecord {
   subject: string | null
   headerLine: string | null
   instruction: string | null
+  /** Hard-rule validator warnings captured at generation time. */
+  warnings?: string[]
   channel: string | null
   /** ts of the Slack message carrying this draft (the ✅ target). */
   slackTs: string | null
@@ -81,6 +83,71 @@ interface ThreadRow {
   updated_at: string
 }
 
+export type ActionItemOwner = 'zaire' | 'arya' | 'team' | 'external'
+
+export interface CallActionItem {
+  ownerType: ActionItemOwner
+  ownerName: string
+  description: string
+  /** YYYY-MM-DD or null (router applies the +3 business day default). */
+  due: string | null
+}
+
+export interface CallRecord {
+  meetingUuid: string
+  topic: string
+  channel: string | null
+  slackTs: string | null
+  status: 'pending' | 'routed'
+  actionItems: CallActionItem[]
+  /** Routing executes after this instant unless ✅ routed it earlier (spec §13). */
+  executeAfter: string
+  createdAt: string
+  updatedAt: string
+}
+
+interface CallRow {
+  meeting_uuid: string
+  topic: string
+  channel: string | null
+  slack_ts: string | null
+  status: string
+  action_items: string
+  execute_after: string
+  created_at: string
+  updated_at: string
+}
+
+function toCall(row: CallRow): CallRecord {
+  return {
+    meetingUuid: row.meeting_uuid,
+    topic: row.topic,
+    channel: row.channel,
+    slackTs: row.slack_ts,
+    status: row.status as CallRecord['status'],
+    actionItems: JSON.parse(row.action_items) as CallActionItem[],
+    executeAfter: row.execute_after,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }
+}
+
+export interface AryaTaskRecord {
+  gid: string
+  title: string
+  status: 'interpreted' | 'clarify' | 'out_of_lane' | 'done'
+  pickedAt: string
+  updatedAt: string
+}
+
+interface AryaTaskRow {
+  gid: string
+  title: string
+  status: string
+  picked_at: string
+  updated_at: string
+}
+
 interface DraftRow {
   id: number
   thread_id: string
@@ -92,6 +159,7 @@ interface DraftRow {
   subject: string | null
   header_line: string | null
   instruction: string | null
+  warnings: string
   channel: string | null
   slack_ts: string | null
   digest_slack_ts: string | null
@@ -112,6 +180,7 @@ function toDraft(row: DraftRow): DraftRecord {
     subject: row.subject,
     headerLine: row.header_line,
     instruction: row.instruction,
+    warnings: JSON.parse(row.warnings || '[]') as string[],
     channel: row.channel,
     slackTs: row.slack_ts,
     digestSlackTs: row.digest_slack_ts,
@@ -188,6 +257,7 @@ export class StateStore {
         subject        TEXT,
         header_line    TEXT,
         instruction    TEXT,
+        warnings       TEXT NOT NULL DEFAULT '[]',
         channel        TEXT,
         slack_ts       TEXT,
         digest_slack_ts TEXT,
@@ -201,6 +271,30 @@ export class StateStore {
       CREATE TABLE IF NOT EXISTS handled_slack (
         slack_ts   TEXT PRIMARY KEY,
         handled_at TEXT NOT NULL
+      )
+    `)
+    // Ingested Zoom calls and their 30-minute correction windows (spec §13).
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS calls (
+        meeting_uuid  TEXT PRIMARY KEY,
+        topic         TEXT NOT NULL,
+        channel       TEXT,
+        slack_ts      TEXT,
+        status        TEXT NOT NULL,
+        action_items  TEXT NOT NULL,
+        execute_after TEXT NOT NULL,
+        created_at    TEXT NOT NULL,
+        updated_at    TEXT NOT NULL
+      )
+    `)
+    // Asana tasks assigned to Arya — her work queue (spec §14.1).
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS arya_tasks (
+        gid        TEXT PRIMARY KEY,
+        title      TEXT NOT NULL,
+        status     TEXT NOT NULL,
+        picked_at  TEXT NOT NULL,
+        updated_at TEXT NOT NULL
       )
     `)
     // Columns added after stage 2 — migrate any pre-existing database in place.
@@ -302,17 +396,32 @@ export class StateStore {
       .prepare(
         `INSERT INTO drafts (
            thread_id, kind, status, body, to_addr, cc_addr, subject, header_line,
-           instruction, channel, slack_ts, digest_slack_ts, item_number,
+           instruction, warnings, channel, slack_ts, digest_slack_ts, item_number,
            created_at, updated_at
-         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         draft.threadId, draft.kind, draft.status, draft.body, draft.toAddr,
         draft.ccAddr, draft.subject, draft.headerLine, draft.instruction,
+        JSON.stringify(draft.warnings ?? []),
         draft.channel, draft.slackTs, draft.digestSlackTs, draft.itemNumber,
         now, now,
       )
     return Number(result.lastInsertRowid)
+  }
+
+  /** Attach a stored (not-yet-posted) draft to its Slack approval message. */
+  setDraftSlackRefs(
+    id: number,
+    refs: { channel: string; slackTs: string; digestSlackTs: string; itemNumber: number },
+  ): void {
+    this.db
+      .prepare(
+        `UPDATE drafts SET channel = ?, slack_ts = ?, digest_slack_ts = ?,
+         item_number = ?, updated_at = ? WHERE id = ?`,
+      )
+      .run(refs.channel, refs.slackTs, refs.digestSlackTs, refs.itemNumber,
+           new Date().toISOString(), id)
   }
 
   setDraftStatus(id: number, status: DraftRecordStatus): void {
@@ -333,6 +442,70 @@ export class StateStore {
       .prepare('SELECT * FROM drafts WHERE thread_id = ? ORDER BY id')
       .all(threadId) as DraftRow[]
     return rows.map(toDraft)
+  }
+
+  getCall(meetingUuid: string): CallRecord | undefined {
+    const row = this.db
+      .prepare('SELECT * FROM calls WHERE meeting_uuid = ?')
+      .get(meetingUuid) as CallRow | undefined
+    return row ? toCall(row) : undefined
+  }
+
+  saveCall(call: Omit<CallRecord, 'createdAt' | 'updatedAt'>): void {
+    const now = new Date().toISOString()
+    this.db
+      .prepare(
+        `INSERT INTO calls (
+           meeting_uuid, topic, channel, slack_ts, status, action_items,
+           execute_after, created_at, updated_at
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(meeting_uuid) DO UPDATE SET
+           status = excluded.status,
+           action_items = excluded.action_items,
+           execute_after = excluded.execute_after,
+           updated_at = excluded.updated_at`,
+      )
+      .run(
+        call.meetingUuid, call.topic, call.channel, call.slackTs, call.status,
+        JSON.stringify(call.actionItems), call.executeAfter, now, now,
+      )
+  }
+
+  pendingCalls(): CallRecord[] {
+    const rows = this.db
+      .prepare("SELECT * FROM calls WHERE status = 'pending' ORDER BY created_at")
+      .all() as CallRow[]
+    return rows.map(toCall)
+  }
+
+  getAryaTask(gid: string): AryaTaskRecord | undefined {
+    const row = this.db
+      .prepare('SELECT * FROM arya_tasks WHERE gid = ?')
+      .get(gid) as AryaTaskRow | undefined
+    return row
+      ? { gid: row.gid, title: row.title, status: row.status as AryaTaskRecord['status'],
+          pickedAt: row.picked_at, updatedAt: row.updated_at }
+      : undefined
+  }
+
+  upsertAryaTask(task: Omit<AryaTaskRecord, 'updatedAt'>): void {
+    this.db
+      .prepare(
+        `INSERT INTO arya_tasks (gid, title, status, picked_at, updated_at)
+         VALUES (?, ?, ?, ?, ?)
+         ON CONFLICT(gid) DO UPDATE SET
+           title = excluded.title, status = excluded.status,
+           updated_at = excluded.updated_at`,
+      )
+      .run(task.gid, task.title, task.status, task.pickedAt, new Date().toISOString())
+  }
+
+  allAryaTasks(): AryaTaskRecord[] {
+    const rows = this.db.prepare('SELECT * FROM arya_tasks').all() as AryaTaskRow[]
+    return rows.map((row) => ({
+      gid: row.gid, title: row.title, status: row.status as AryaTaskRecord['status'],
+      pickedAt: row.picked_at, updatedAt: row.updated_at,
+    }))
   }
 
   isHandled(slackTs: string): boolean {

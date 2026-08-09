@@ -143,10 +143,9 @@ async function sweep(options: SweepOptions): Promise<void> {
           label,
           lowConfidence: classification?.confidence === 'low',
           needsReading: classification?.needsReading ?? false,
-          waitingSince:
-            label === '3-Waiting'
-              ? (state?.label === '3-Waiting' ? state.waitingSince : newestDate)
-              : null,
+          // Spec §8: the nudge threshold counts from the LAST OUTBOUND — a fresh
+          // outbound (including a sent nudge) always resets the clock.
+          waitingSince: label === '3-Waiting' ? newestDate : null,
           nudgeCount:
             decision.type === 'classify' && decision.resetNudges
               ? 0

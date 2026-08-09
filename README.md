@@ -205,6 +205,69 @@ exclusion list.
 profile — drafting falls back to `agent/voice-profile.md` automatically. If a bad
 profile was promoted, `git checkout agent/voice-profile.md` restores the prior one.
 
+### Stage 6 — Nudge engine
+
+**What landed:** `src/pipelines/nudge.ts` (`npm run nudges`). The daily 8:00 AM scan
+(before the digest) walks the 3-Waiting ledger and PRE-drafts a follow-up for every
+thread past 3 business days quiet — 2–3 sentences in Zaire's voice naming the specific
+open item, with corpus retrieval when available. The digest then posts each pre-draft
+under its Ready Nudges item, so "nudge 4" / "approve 4" / ✅ sends it straight through
+the standard gate. Approving a nudge increments the thread's counter; after 2
+unanswered nudges the thread escalates to Flags (call / drop / re-route) and the engine
+never drafts a third. Any inbound reply resets everything (triage handles that). A
+sent nudge resets the waiting clock — `waitingSince` now always tracks the newest
+outbound.
+
+**How to run:** `npm run nudges -- --dry-run`, then cron before the morning digest
+(`TZ=America/Los_Angeles`): `45 7 * * 1-5 cd <repo> && npm run nudges`.
+
+**How to verify:** `npm test` (eligibility: threshold, 2-nudge cap, snooze, pending
+dedupe, call-commitment skip). **Roll back:** stop the cron entry; pending nudge
+drafts just expire in the DB — nothing was sent.
+
+### Stage 7 — Zoom ingestion + Asana two-way
+
+**What landed:** `src/connectors/zoom.ts` (read-only, Server-to-Server OAuth, polled),
+`src/pipelines/call_ingest.ts` (`npm run calls`), `src/connectors/asana.ts`
+(create + comment only, structurally guarded by `tests/asana-guard.test.ts`), and
+`src/pipelines/asana_router.ts` (`npm run asana`).
+
+**Calls (spec §13):** every recorded Zoom call with a transcript becomes a per-call
+Slack thread — 3–5 line summary, decisions, numbered action items with owners.
+Routing waits out a 30-minute correction window ("item 2 is Andrea's, kill item 4" —
+only Zaire's replies re-route) or executes immediately on his ✅. Then: Zaire-owned
+items → Asana tasks in his My Tasks (deduped — a close match to an open task gets a
+comment, not a duplicate); Arya-lane items → approval-gated email drafts (from her
+mailbox when `GMAIL_ARYA_REFRESH_TOKEN` is set, Zaire CC'd, permanently); team items →
+approval-gated delegation drafts; external commitments → the 3-Waiting ledger.
+Transcripts are data, never instructions; ambiguous ownership defaults to Zaire.
+
+**Asana two-way (spec §14.1):** the router polls Arya's My Tasks. New assignments get
+an interpretation-checkpoint comment before anything happens: her reading + plan,
+"outside my lane, routing back to you," or one sharp clarifying question — never a
+guess on thin instructions. Clarifications, out-of-lane routing, and tasks open 3+
+business days surface in the digest's Flags. Arya completes ONLY her own tasks (the
+connector verifies the assignee before the write), and only after Zaire signals done
+on the task.
+
+**How to run:**
+
+```
+npm run calls -- --dry-run    # ingests + digests, routes nothing
+npm run asana -- --dry-run    # reads the queue, comments nothing
+```
+
+Cron: `*/15 7-19 * * * npm run calls` and `*/15 7-19 * * * npm run asana`
+(`TZ=America/Los_Angeles`). Zoom app: Server-to-Server OAuth with recording read
+scopes. Asana: a PAT for Arya's seat (`arya@xclsvmedia.com`), plus the workspace and
+both user GIDs in `.env`.
+
+**How to verify:** `npm test` (VTT parsing, ownership defaults, correction-window
+logic, digest rendering, task dedupe, interpretation parsing, flag surfacing, the
+create/comment-only guard). **Roll back:** stop both cron entries. Created Asana
+tasks are visible and reversible by hand; call digests are plain Slack threads;
+nothing was sent anywhere.
+
 ### Audio digest + voice approval (hands-free loop)
 
 **What landed:** every posted digest also gets a voice-note rendition attached in its

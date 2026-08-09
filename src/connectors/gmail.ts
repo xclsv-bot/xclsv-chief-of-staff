@@ -265,6 +265,24 @@ export function buildReplyMime(opts: ReplyDraftOptions): string {
 }
 
 /**
+ * A fresh (non-reply) draft — call-derived follow-ups and delegation notes that
+ * have no existing Gmail thread. Same rule as everywhere: drafts only, the
+ * human click to send is the final control.
+ */
+export async function createDraftMessage(
+  gmail: gmail_v1.Gmail,
+  opts: ReplyDraftOptions,
+): Promise<string> {
+  const res = await withRetry(() =>
+    gmail.users.drafts.create({
+      userId: 'me',
+      requestBody: { message: { raw: buildReplyMime(opts) } },
+    }),
+  )
+  return res.data.id ?? ''
+}
+
+/**
  * The approval gate's terminal action (spec §7.3): finalize an approved draft in
  * Gmail Drafts, attached to the correct thread. Creating a draft is the ONLY
  * outbound capability this connector has — the human click to send is the final

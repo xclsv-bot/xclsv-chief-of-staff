@@ -169,7 +169,9 @@ export function validateDraft(
       warnings.push(`contains a number Zaire didn't say: "${token}" — hard rule 3`)
     }
   }
-  if (request.kind === 'reply') {
+  // Call-derived drafts have no thread to check participants against — the
+  // recipient is confirmed by eye at the approval gate instead.
+  if (request.kind === 'reply' && request.thread.messages.length > 0) {
     const participants = new Set(
       request.thread.messages.flatMap((m) =>
         emailAddresses(`${m.from} ${m.to} ${m.cc}`),
