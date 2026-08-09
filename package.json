@@ -9,7 +9,6 @@
   "scripts": {
     "sweep": "tsx src/pipelines/triage.ts",
     "digest": "tsx src/pipelines/digest.ts",
-    "inbox": "tsx src/pipelines/memo.ts",
     "corpus": "tsx src/pipelines/corpus_builder.ts",
     "nudges": "tsx src/pipelines/nudge.ts",
     "calls": "tsx src/pipelines/call_ingest.ts",
