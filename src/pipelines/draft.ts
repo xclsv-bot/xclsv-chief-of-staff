@@ -35,6 +35,8 @@ export interface DraftRequest {
   /** For revisions: the prior draft body and the requested changes. */
   priorDraft?: string
   revision?: string
+  /** Pre-formatted retrieval block (spec §6.2) — style precedent, or absent. */
+  examples?: string | null
 }
 
 export interface GeneratedDraft {
@@ -96,6 +98,7 @@ export async function generateDraft(
   const user = [
     '## Thread',
     renderThread(request.thread),
+    ...(request.examples ? ['', request.examples] : []),
     '',
     "## Zaire's instruction for this thread",
     request.instruction,

@@ -188,6 +188,57 @@ export async function fetchThread(
   }
 }
 
+/** List message ids matching a Gmail query (paginated), e.g. the Sent folder. */
+export async function listMessageIds(
+  gmail: gmail_v1.Gmail,
+  query: string,
+  max: number,
+): Promise<string[]> {
+  const ids: string[] = []
+  let pageToken: string | undefined
+  while (ids.length < max) {
+    const res = await withRetry(() =>
+      gmail.users.messages.list({
+        userId: 'me',
+        q: query,
+        maxResults: Math.min(500, max - ids.length),
+        pageToken,
+      }),
+    )
+    ids.push(...(res.data.messages ?? []).flatMap((m) => (m.id ? [m.id] : [])))
+    pageToken = res.data.nextPageToken ?? undefined
+    if (!pageToken) break
+  }
+  return ids.slice(0, max)
+}
+
+export interface FetchedMessage extends MessageSummary {
+  threadId: string
+  subject: string
+}
+
+export async function fetchMessage(
+  gmail: gmail_v1.Gmail,
+  messageId: string,
+): Promise<FetchedMessage> {
+  const res = await withRetry(() =>
+    gmail.users.messages.get({ userId: 'me', id: messageId, format: 'full' }),
+  )
+  const m = res.data
+  return {
+    id: m.id ?? '',
+    threadId: m.threadId ?? '',
+    subject: header(m, 'Subject'),
+    from: header(m, 'From'),
+    to: header(m, 'To'),
+    cc: header(m, 'Cc'),
+    date: header(m, 'Date'),
+    rfcMessageId: header(m, 'Message-ID'),
+    body: extractText(m.payload).trim().slice(0, 4000),
+    attachments: listAttachments(m.payload),
+  }
+}
+
 export interface ReplyDraftOptions {
   to: string
   cc?: string

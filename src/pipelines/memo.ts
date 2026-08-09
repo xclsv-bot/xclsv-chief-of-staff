@@ -28,6 +28,7 @@ import {
   slackClient,
   type SlackMessage,
 } from '../connectors/slack.js'
+import { retrieveForDraft } from '../retrieval.js'
 import { StateStore, type DigestRecord, type DraftRecord } from '../state.js'
 import { transcribe } from '../transcribe.js'
 import { loadAgentFiles, type AgentFiles } from './classify.js'
@@ -242,6 +243,22 @@ async function makeDraft(
       ? `Delegate to ${action.delegateTo ?? 'the named teammate'}: ${action.content}`
       : action.content ||
         (kind === 'nudge' ? 'Send the follow-up nudge for this thread.' : '')
+  // Spec §6.2 retrieval — style precedent from the voice corpus when it exists.
+  // Recipients: thread participants who aren't Zaire (exact-contact priority).
+  const owner = optionalEnv('ZAIRE_EMAIL', '').toLowerCase()
+  const recipients = [
+    ...new Set(
+      thread.messages
+        .flatMap((m) => `${m.from} ${m.to} ${m.cc}`.match(/[\w.+-]+@[\w-]+\.[\w.-]+/g) ?? [])
+        .map((a) => a.toLowerCase())
+        .filter((a) => a !== owner),
+    ),
+  ]
+  const examples = await retrieveForDraft({
+    recipientEmails: recipients,
+    queryText: `${thread.subject}\n${instruction}`,
+    openaiKey: process.env.OPENAI_API_KEY,
+  })
   const generated = await generateDraft(
     rt.anthropic,
     rt.model,
@@ -251,6 +268,7 @@ async function makeDraft(
       instruction,
       priorDraft: prior?.body,
       revision: prior ? action.content : undefined,
+      examples,
     },
     rt.draftFiles,
   )

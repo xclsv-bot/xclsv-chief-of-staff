@@ -10,6 +10,7 @@
     "sweep": "tsx src/pipelines/triage.ts",
     "digest": "tsx src/pipelines/digest.ts",
     "inbox": "tsx src/pipelines/memo.ts",
+    "corpus": "tsx src/pipelines/corpus_builder.ts",
     "auth:gmail": "tsx scripts/get_gmail_token.ts",
     "test": "vitest run",
     "test:eval": "RUN_TRIAGE_EVAL=1 vitest run tests/triage.eval.test.ts",

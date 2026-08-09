@@ -65,6 +65,29 @@ export async function fetchHistory(
   )
 }
 
+/** Full paginated history for corpus building — messages oldest-first. */
+export async function fetchAllHistory(
+  client: WebClient,
+  channel: string,
+  oldestTs: string,
+  maxPages = 20,
+): Promise<SlackMessage[]> {
+  const all: RawMessage[] = []
+  let cursor: string | undefined
+  for (let page = 0; page < maxPages; page++) {
+    const res = await client.conversations.history({
+      channel,
+      oldest: oldestTs,
+      limit: 200,
+      cursor,
+    })
+    all.push(...((res.messages ?? []) as RawMessage[]))
+    cursor = res.response_metadata?.next_cursor || undefined
+    if (!cursor) break
+  }
+  return all.map(toMessage).sort((a, b) => a.ts.localeCompare(b.ts))
+}
+
 export async function fetchReplies(
   client: WebClient,
   channel: string,

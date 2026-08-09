@@ -157,6 +157,54 @@ DB rows; Gmail drafts created by approvals are visible in the Drafts folder and 
 discarded by hand (the agent itself never deletes). `data/state.db` remains the single
 source of state.
 
+### Stage 5 — Voice corpus builder + retrieval
+
+**What landed:** `src/pipelines/corpus_builder.ts` (`npm run corpus` /
+`scripts/build_corpus.sh`), `src/retrieval.ts`, and `agent/corpus-exclusions.md`.
+
+The build (spec §6.1): pulls Zaire's Sent folder (trailing 12 months, cap
+`CORPUS_MAX_EMAILS`) and, optionally, his messages from Slack channels he designates
+(`SLACK_CORPUS_CHANNEL_IDS`) for the internal register. Exclusions from
+`agent/corpus-exclusions.md` (contacts + keywords — legal, capital, personal) are
+applied at ingest, so excluded material never touches disk. Kept emails are clustered
+into the spec's situation types (established partner, new contact, internal team,
+nudge, scheduling, declining/deferring), embedded for retrieval
+(`data/embeddings/`), and distilled into a candidate profile at
+`data/voice-profile.generated.md`.
+
+**Promotion is manual by design:** the generated profile is a candidate. Zaire reads
+it, edits it, and copies it over `agent/voice-profile.md` himself — the only
+corpus-derived file that may enter the repo (CLAUDE.md). Keep the "Corpus rules"
+section when promoting.
+
+Retrieval at draft time (spec §6.2): every draft now looks for precedent —
+(1) Zaire's past emails to that exact contact, then (2) semantically similar sent
+mail — and hands them to the drafter framed as style-only precedent; the numbers-rule
+validator remains the mechanical backstop. No corpus, or any retrieval failure →
+drafting continues on `voice-profile.md` alone. Retrieval upgrades quality; it is
+never a dependency.
+
+**How to run:**
+
+```
+npm run corpus -- --dry-run       # counts what would be ingested/excluded, writes nothing
+npm run corpus                    # full build: corpus, clusters, embeddings, candidate profile
+```
+
+Refresh monthly (spec §6.1), e.g. cron: `0 6 1 * * cd <repo> && npm run corpus`.
+Privacy: the pipeline logs counts and paths only — never message contents; everything
+it writes lives under gitignored `data/`.
+
+**How to verify:** `npm test` (exclusion parsing/matching, contact-priority retrieval,
+similarity ranking, style-only example formatting). After a real build: skim
+`data/voice-profile.generated.md` for anything that reads like leaked facts rather
+than style description, and spot-check `data/corpus/emails.jsonl` counts against the
+exclusion list.
+
+**How to roll back:** delete `data/corpus/`, `data/embeddings/`, and the generated
+profile — drafting falls back to `agent/voice-profile.md` automatically. If a bad
+profile was promoted, `git checkout agent/voice-profile.md` restores the prior one.
+
 ### Audio digest + voice approval (hands-free loop)
 
 **What landed:** every posted digest also gets a voice-note rendition attached in its
