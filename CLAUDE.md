@@ -41,7 +41,7 @@ These are product decisions, not suggestions. Do not "improve" past them.
 - **`data/` is gitignored and stays that way.** The voice corpus, embeddings, and state DB
   contain real correspondence. Never commit anything under `data/`. Never print corpus
   contents into logs. The only corpus-derived file that may enter the repo is
-  `agent/voice-profile.md`, and only Zaire promotes it after review.
+  `agent/writing-profile.md`, and only Zaire promotes it after review.
 - **Secrets:** environment variables only. Maintain `.env.example` with names, never values.
 - **State:** SQLite at `data/state.db`, keyed by Gmail thread ID / Asana task GID. Design
   every pipeline to be idempotent — re-running a sweep must not duplicate digests, drafts,
@@ -54,7 +54,7 @@ These are product decisions, not suggestions. Do not "improve" past them.
 3. Slack bot + twice-daily digest (spec §4).
 4. Voice memo → parse → draft → approval gate (spec §5–7).
 5. Corpus builder + retrieval (spec §6). Drafting must work before this lands, using a
-   thin hand-written `voice-profile.md`; retrieval upgrades quality, it is not a dependency.
+   thin hand-written `writing-profile.md`; retrieval upgrades quality, it is not a dependency.
 6. Nudge engine (spec §8).
 7. Zoom ingestion (spec §13), then Asana routing + Arya's task queue (spec §14).
 
@@ -82,7 +82,8 @@ arya/
 │   ├── triage-rules.md        # includes VIP list
 │   ├── arya-scope.md          # lane / never-lane
 │   ├── nudge-rules.md
-│   └── voice-profile.md       # generated, then human-reviewed
+│   ├── writing-profile.md     # Zaire's written voice (drafts); generated, then human-reviewed
+│   └── voice-conduct.md       # How Arya speaks on a live call
 ├── src/
 │   ├── connectors/            # gmail.ts, slack.ts, zoom.ts, asana.ts
 │   ├── pipelines/             # triage.ts, digest.ts, draft.ts, nudge.ts,

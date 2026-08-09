@@ -19,7 +19,7 @@ outbound artifact passes a Slack approval gate. See the trust ladder in spec §9
 **What landed:** repo structure per `CLAUDE.md`, the spec in `docs/`, `agent/ARYA.md`
 (soul file, verbatim from the spec appendix), and first drafts of `label-taxonomy.md`,
 `triage-rules.md`, `arya-scope.md`, `nudge-rules.md`, plus a placeholder
-`voice-profile.md` (real one is generated in stage 5).
+`writing-profile.md` (real one is generated in stage 5).
 
 **How to verify:** read the `agent/` files against spec §3, §4, §8, §12 — they should
 restate the spec, not contradict it. `data/` must be gitignored (`git check-ignore data/x`
@@ -170,10 +170,10 @@ applied at ingest, so excluded material never touches disk. Kept emails are clus
 into the spec's situation types (established partner, new contact, internal team,
 nudge, scheduling, declining/deferring), embedded for retrieval
 (`data/embeddings/`), and distilled into a candidate profile at
-`data/voice-profile.generated.md`.
+`data/writing-profile.generated.md`.
 
 **Promotion is manual by design:** the generated profile is a candidate. Zaire reads
-it, edits it, and copies it over `agent/voice-profile.md` himself — the only
+it, edits it, and copies it over `agent/writing-profile.md` himself — the only
 corpus-derived file that may enter the repo (CLAUDE.md). Keep the "Corpus rules"
 section when promoting.
 
@@ -181,7 +181,7 @@ Retrieval at draft time (spec §6.2): every draft now looks for precedent —
 (1) Zaire's past emails to that exact contact, then (2) semantically similar sent
 mail — and hands them to the drafter framed as style-only precedent; the numbers-rule
 validator remains the mechanical backstop. No corpus, or any retrieval failure →
-drafting continues on `voice-profile.md` alone. Retrieval upgrades quality; it is
+drafting continues on `writing-profile.md` alone. Retrieval upgrades quality; it is
 never a dependency.
 
 **How to run:**
@@ -197,13 +197,13 @@ it writes lives under gitignored `data/`.
 
 **How to verify:** `npm test` (exclusion parsing/matching, contact-priority retrieval,
 similarity ranking, style-only example formatting). After a real build: skim
-`data/voice-profile.generated.md` for anything that reads like leaked facts rather
+`data/writing-profile.generated.md` for anything that reads like leaked facts rather
 than style description, and spot-check `data/corpus/emails.jsonl` counts against the
 exclusion list.
 
 **How to roll back:** delete `data/corpus/`, `data/embeddings/`, and the generated
-profile — drafting falls back to `agent/voice-profile.md` automatically. If a bad
-profile was promoted, `git checkout agent/voice-profile.md` restores the prior one.
+profile — drafting falls back to `agent/writing-profile.md` automatically. If a bad
+profile was promoted, `git checkout agent/writing-profile.md` restores the prior one.
 
 ### Stage 6 — Nudge engine
 

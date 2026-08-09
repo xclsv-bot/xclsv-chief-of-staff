@@ -2,7 +2,7 @@
 //   (1) Zaire's past emails to this exact contact — ground truth for that
 //       relationship's tone;
 //   (2) semantically similar past emails (same situation type);
-//   (3) voice-profile.md — already in the draft prompt as the fallback.
+//   (3) writing-profile.md — already in the draft prompt as the fallback.
 // Retrieved examples condition STYLE only; the numbers-rule validator in
 // draft.ts remains the mechanical backstop against content leaking through.
 //
@@ -224,7 +224,7 @@ export async function retrieveForDraft(options: {
     return formatExamples(contactMatches, situationMatches)
   } catch (error) {
     console.error(
-      `retrieval skipped (${(error as Error).message}) — drafting continues on voice-profile.md`,
+      `retrieval skipped (${(error as Error).message}) — drafting continues on writing-profile.md`,
     )
     return null
   }

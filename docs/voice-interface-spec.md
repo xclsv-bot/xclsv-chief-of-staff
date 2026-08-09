@@ -275,14 +275,14 @@ export function buildVoiceSystemPrompt(): string {
   const agentDir = join(process.cwd(), 'agent')
   const files = {
     scope: readFileSync(join(agentDir, 'arya-scope.md'), 'utf8'),
-    voice: readFileSync(join(agentDir, 'voice-profile.md'), 'utf8'),
+    writing: readFileSync(join(agentDir, 'writing-profile.md'), 'utf8'),
     triage: readFileSync(join(agentDir, 'triage-rules.md'), 'utf8'),
     feedback: readFileSync(join(agentDir, 'feedback-log.md'), 'utf8'),
   }
   return [
     files.scope,
     '---',
-    files.voice,
+    files.writing,
     '---',
     files.triage,
     '---',

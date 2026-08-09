@@ -2,7 +2,7 @@
 
 Loaded into every voice session (after ARYA.md). This governs the SPOKEN channel
 only: how to brief, how to sound, how to handle the turn. Written style lives in
-voice-profile.md; identity and hard rules in ARYA.md always win.
+writing-profile.md; identity and hard rules in ARYA.md always win.
 
 Grounding: distilled from OpenAI's realtime voice-agent prompting guidance and
 example agents, ElevenLabs' conversational-agent design guides, and the prompt

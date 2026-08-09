@@ -1,4 +1,7 @@
-# voice-profile.md — Zaire's writing style per register
+# writing-profile.md — Zaire's *written* voice per register
+#
+# Powers drafts Arya composes on Zaire's behalf (create_draft handler + reply
+# pipeline). For how Arya *speaks* live to Zaire, see speaking-profile.md.
 
 > Distilled 2026-08-09 from **1,182 sent emails** covering the trailing 60 days
 > (2026-06-10 → 2026-08-09). Refresh via `CORPUS_WINDOW_DAYS=<days> npm run corpus`

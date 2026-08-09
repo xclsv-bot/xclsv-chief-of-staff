@@ -7,8 +7,8 @@
 //   data/corpus/emails.jsonl        the email corpus, situation-tagged
 //   data/corpus/slack.jsonl         Zaire's Slack register
 //   data/embeddings/emails.json     id → embedding vector (retrieval index)
-//   data/voice-profile.generated.md CANDIDATE profile — Zaire reviews and
-//                                   promotes to agent/voice-profile.md himself.
+//   data/writing-profile.generated.md CANDIDATE profile — Zaire reviews and
+//                                     promotes to agent/writing-profile.md himself.
 //
 // Privacy: corpus records are real correspondence. This pipeline logs counts and
 // file paths only — never message contents (CLAUDE.md architecture rules).
@@ -139,12 +139,12 @@ async function distillProfile(
     console.log(`distilled: ${situation} (${samples.length} samples)`)
   }
   return [
-    '# voice-profile.md — GENERATED CANDIDATE',
+    '# writing-profile.md — GENERATED CANDIDATE',
     '',
     `> Generated ${new Date().toISOString().slice(0, 10)} from ${emails.length} sent`,
     '> emails. REVIEW BEFORE PROMOTING: read it, edit it, then copy it to',
-    '> `agent/voice-profile.md` yourself. Only Zaire promotes this file (CLAUDE.md).',
-    '> Keep the "Corpus rules" section from the current agent/voice-profile.md.',
+    '> `agent/writing-profile.md` yourself. Only Zaire promotes this file (CLAUDE.md).',
+    '> Keep the "Corpus rules" section from the current agent/writing-profile.md.',
     '',
     ...sections,
   ].join('\n\n')
@@ -242,9 +242,9 @@ async function run(dryRun: boolean): Promise<void> {
 
   // 5. Candidate profile — Zaire promotes it manually after review.
   const profile = await distillProfile(anthropic, distillModel, kept)
-  writeFileSync('data/voice-profile.generated.md', profile)
+  writeFileSync('data/writing-profile.generated.md', profile)
   console.log(
-    'wrote data/voice-profile.generated.md — review it, then promote to agent/voice-profile.md yourself',
+    'wrote data/writing-profile.generated.md — review it, then promote to agent/writing-profile.md yourself',
   )
 }
 

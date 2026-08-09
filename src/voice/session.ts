@@ -29,7 +29,11 @@ export function buildVoiceSystemPrompt(): string {
     '---',
     read(dir, 'arya-scope.md'),
     '---',
-    read(dir, 'voice-profile.md'),
+    // Zaire's overall voice/register. voice-conduct.md governs HOW Arya
+    // speaks; writing-profile.md is context on WHOSE voice she's operating in.
+    // The create_draft handler loads this file separately when composing
+    // outbound on Zaire's behalf.
+    read(dir, 'writing-profile.md'),
     '---',
     read(dir, 'triage-rules.md'),
     '---',

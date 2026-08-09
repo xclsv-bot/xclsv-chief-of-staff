@@ -24,7 +24,7 @@ When a thread crosses threshold:
 
 ## Nudge tone
 
-- Zaire's register per `voice-profile.md`: direct, friendly, zero corporate filler.
+- Zaire's register per `writing-profile.md`: direct, friendly, zero corporate filler.
   Never "per my last email," never "hope this finds you well," never an apology for
   following up.
 - Reference the concrete thing owed and, where natural, why it matters now ("want to

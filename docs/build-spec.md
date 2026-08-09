@@ -16,7 +16,7 @@ A single agent — named **Arya** — that acts as an executive-assistant layer 
 
 **2. Architecture**
 
-- **Agent core:** Claude Code agent with scheduled runs. Instruction files kept in repo: label-taxonomy.md, triage-rules.md, voice-profile.md, nudge-rules.md.
+- **Agent core:** Claude Code agent with scheduled runs. Instruction files kept in repo: label-taxonomy.md, triage-rules.md, writing-profile.md, speaking-profile.md, nudge-rules.md.
 
 - **Gmail connector (v1 scopes):** read, modify labels, archive, create drafts. **No send scope. No delete scope.** Sending is manual (from Gmail) in v1 — see Section 9. Applies to both Zaire's mailbox and the Arya mailbox.
 
@@ -86,7 +86,7 @@ Arya learns Zaire's voice from his actual communication history rather than a st
 
 - **Sources:** Gmail Sent folder, trailing 12 months (read scope already granted); Slack message history from channels/DMs Zaire designates (requires a Slack history-read scope — added to the connector list). Slack supplies the internal register; email supplies the partner registers.
 
-- **Processing:** cluster sent messages by recipient type and situation — established partner, new contact, internal team, nudge/follow-up, scheduling, declining/deferring — and distill each cluster into voice-profile.md: observed greeting/closing norms, typical length, formality per relationship, characteristic phrasings, and how Zaire actually handles common situations (how he says no, how he chases, how he defers a number).
+- **Processing:** cluster sent messages by recipient type and situation — established partner, new contact, internal team, nudge/follow-up, scheduling, declining/deferring — and distill each cluster into writing-profile.md: observed greeting/closing norms, typical length, formality per relationship, characteristic phrasings, and how Zaire actually handles common situations (how he says no, how he chases, how he defers a number).
 
 - **Exclusions:** Zaire can list threads, contacts, or keywords excluded from the corpus (e.g., legal, capital, personal). Excluded material is never retrieved as an example.
 
@@ -94,7 +94,7 @@ Arya learns Zaire's voice from his actual communication history rather than a st
 
 **6.2 Per-thread retrieval at draft time**
 
-When drafting, Arya retrieves the strongest available precedent, in priority order: (1) Zaire's past emails **to this exact contact** — the ground truth for that relationship's tone; (2) his emails handling **the same situation type** with similar contacts; (3) the distilled voice-profile.md as fallback for novel contacts. Retrieved examples condition style only — tone, structure, length — never content: facts, numbers, and commitments in old emails are precedent for **how** Zaire writes, not for **what** this draft may claim.
+When drafting, Arya retrieves the strongest available precedent, in priority order: (1) Zaire's past emails **to this exact contact** — the ground truth for that relationship's tone; (2) his emails handling **the same situation type** with similar contacts; (3) the distilled writing-profile.md as fallback for novel contacts. Retrieved examples condition style only — tone, structure, length — never content: facts, numbers, and commitments in old emails are precedent for **how** Zaire writes, not for **what** this draft may claim.
 
 **Hard rules (encoded as constraints, not suggestions):**
 

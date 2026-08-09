@@ -1,7 +1,8 @@
 // Draft generation — spec §6. Drafts are written in Zaire's voice (they will be
 // sent from HIS mailbox by HIM, so no Arya signature), conditioned on
-// voice-profile.md until the corpus builder lands in stage 5. The hard rules are
-// enforced twice: in the prompt, and mechanically after generation —
+// writing-profile.md (Zaire's distilled written voice; the spoken-voice profile
+// for the Realtime session lives separately in speaking-profile.md). Hard rules
+// are enforced twice: in the prompt, and mechanically after generation —
 // validateDraft() is the backstop the model cannot talk its way past.
 
 import Anthropic from '@anthropic-ai/sdk'
@@ -13,7 +14,7 @@ import { renderThread } from './classify.js'
 
 export interface DraftFiles {
   arya: string
-  voiceProfile: string
+  writingProfile: string
   nudgeRules: string
   aryaScope: string
 }
@@ -21,7 +22,7 @@ export interface DraftFiles {
 export function loadDraftFiles(dir = 'agent'): DraftFiles {
   return {
     arya: readFileSync(join(dir, 'ARYA.md'), 'utf8'),
-    voiceProfile: readFileSync(join(dir, 'voice-profile.md'), 'utf8'),
+    writingProfile: readFileSync(join(dir, 'writing-profile.md'), 'utf8'),
     nudgeRules: readFileSync(join(dir, 'nudge-rules.md'), 'utf8'),
     aryaScope: readFileSync(join(dir, 'arya-scope.md'), 'utf8'),
   }
@@ -61,7 +62,7 @@ export function buildDraftSystemPrompt(files: DraftFiles, kind: DraftKind): stri
   return [
     files.arya,
     '---',
-    files.voiceProfile,
+    files.writingProfile,
     ...(kind === 'nudge' ? ['---', files.nudgeRules] : []),
     ...(kind === 'delegation' ? ['---', files.aryaScope] : []),
     '---',
@@ -70,7 +71,7 @@ export function buildDraftSystemPrompt(files: DraftFiles, kind: DraftKind): stri
     KIND_GUIDANCE[kind],
     '',
     'This draft will be finalized in ZAIRE\'s Gmail and sent by him, as him — write in',
-    'his voice per the voice profile, match the thread\'s existing tone and language,',
+    'his voice per the writing profile, match the thread\'s existing tone and language,',
     'and do NOT add the Arya signature or any sign-off he would not write himself.',
     '',
     'Hard rules (restated; ARYA.md wins on any conflict):',
