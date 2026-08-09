@@ -69,6 +69,43 @@ During shadow labeling days 1–4, spot-check Gmail against the pass criteria in
 Gmail, or delete them entirely); `rm data/state.db` resets all agent state. Archived
 threads are recoverable from All Mail — nothing is ever deleted.
 
+### Stage 3 — Slack bot + twice-daily digest
+
+**What landed:** `src/connectors/slack.ts` (post digest, threaded replies, one-line
+failure alerts) and `src/pipelines/digest.ts` (spec §4: Needs You / Ready Nudges /
+Flags, capped at 10 oldest-first with "+N more", skipped when empty, Friday-only
+2-Review rollup). Digest item numbers are unique across sections and persisted in the
+`digests` table so the stage-4 voice grammar can resolve "item 3" against the exact
+digest Zaire is answering. The classifier now writes the one-line digest text
+("Luis / Outlier — asking to confirm September slate scope") at triage time, in Arya's
+digest style from `ARYA.md`. Triage sweep failures now post a single alert line to
+Slack instead of stderr. Ready Nudges lists stale threads now; the pre-written nudge
+drafts attach in stage 6.
+
+**Slack app setup (once):** create an app in the workspace, add bot scopes
+`chat:write` and `channels:history` (history is read in stage 4 for reactions/voice
+notes), install to the workspace, invite the bot to `#inbox-gps`, and put the bot
+token + channel ID in `.env` (`SLACK_BOT_TOKEN`, `SLACK_INBOX_GPS_CHANNEL_ID`).
+
+**How to run:**
+
+```
+npm run digest -- --dry-run       # prints the digest to stdout, posts nothing
+npm run digest                    # posts to #inbox-gps (skips silently if empty)
+```
+
+Schedule at 8:00 AM and 3:00 PM PT (spec §2), e.g. cron with `TZ=America/Los_Angeles`:
+`0 8,15 * * * cd <repo> && npm run digest`.
+
+**How to verify:** `npm test` covers ordering, the 10-item cap and overflow note,
+cross-section numbering, snooze exclusion, the 3-business-day nudge threshold,
+2nd-nudge escalation to Flags, and the Friday rollup. Then a `--dry-run` against a
+populated `data/state.db` should read like spec §4's example.
+
+**How to roll back:** stop the digest cron entry — labeling continues unaffected.
+Digest posts are plain Slack messages; deleting them loses nothing (state lives in
+`data/state.db`).
+
 ## Repo layout
 
 See the layout block in `CLAUDE.md`. Behavior lives in `agent/` (markdown, tuned by

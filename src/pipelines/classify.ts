@@ -23,6 +23,8 @@ export interface Classification {
   confidence: 'high' | 'low'
   needsReading: boolean
   reason: string
+  /** One digest line: "Sender / Company — the ask in a few words" (spec §4A). */
+  digestLine: string | null
 }
 
 export function loadAgentFiles(dir = 'agent'): AgentFiles {
@@ -58,7 +60,12 @@ export function buildSystemPrompt(
     '',
     'Respond with ONLY a JSON object, no prose around it:',
     '{"label": "<one allowed label>", "confidence": "high" | "low",',
-    ' "needs_reading": true | false, "reason": "<one short line>"}',
+    ' "needs_reading": true | false, "reason": "<one short line>",',
+    ' "digest_line": "<Sender first name> / <Company> — <the ask in a few words>"}',
+    '',
+    'The digest_line is the one line Zaire sees for this thread in the Slack digest',
+    '(spec §4A) — e.g. "Luis / Outlier — asking to confirm September slate scope".',
+    'Write it per your digest style in ARYA.md: one line, summarize hard, no filler.',
     '',
     '"low" confidence means you would want Zaire to see a "(low confidence)" tag on the',
     'digest line. "needs_reading" is for contract/attachment-heavy threads Zaire must',
@@ -102,6 +109,7 @@ export function parseClassification(
     confidence: 'low',
     needsReading: false,
     reason: 'classifier output unparseable — conservative default',
+    digestLine: null,
   }
   const match = text.match(/\{[\s\S]*\}/)
   if (!match) return fallback
@@ -111,6 +119,7 @@ export function parseClassification(
       confidence?: string
       needs_reading?: boolean
       reason?: string
+      digest_line?: string
     }
     const label = parsed.label as GpsLabel
     if (!ALL_LABELS.includes(label) || !allowed.includes(label)) return fallback
@@ -119,6 +128,7 @@ export function parseClassification(
       confidence: parsed.confidence === 'low' ? 'low' : 'high',
       needsReading: parsed.needs_reading === true,
       reason: parsed.reason ?? '',
+      digestLine: typeof parsed.digest_line === 'string' ? parsed.digest_line : null,
     }
   } catch {
     return fallback

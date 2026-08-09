@@ -16,6 +16,7 @@ import {
   type GmailGpsLabel,
   type ThreadSummary,
 } from '../connectors/gmail.js'
+import { postAlert } from '../connectors/slack.js'
 import { StateStore, type GpsLabel, type ThreadState } from '../state.js'
 import {
   classifyThread,
@@ -134,6 +135,9 @@ async function sweep(options: SweepOptions): Promise<void> {
           label === 'Archive' ? 'Archive' : (label as GmailGpsLabel),
           labelIds!,
         )
+        const newestDate = Number.isNaN(Date.parse(newest.date))
+          ? null
+          : new Date(newest.date).toISOString()
         store.upsert({
           threadId,
           label,
@@ -141,7 +145,7 @@ async function sweep(options: SweepOptions): Promise<void> {
           needsReading: classification?.needsReading ?? false,
           waitingSince:
             label === '3-Waiting'
-              ? (state?.label === '3-Waiting' ? state.waitingSince : newest.date)
+              ? (state?.label === '3-Waiting' ? state.waitingSince : newestDate)
               : null,
           nudgeCount:
             decision.type === 'classify' && decision.resetNudges
@@ -156,8 +160,10 @@ async function sweep(options: SweepOptions): Promise<void> {
           snoozedUntil: state?.snoozedUntil ?? null,
           slackRefs: state?.slackRefs ?? null,
           lastMessageId: newest.id,
+          lastMessageDate: newestDate,
           subject: thread.subject,
           reason: classification?.reason ?? null,
+          digestLine: classification?.digestLine ?? state?.digestLine ?? null,
         })
         console.log(`labeled: ${line}`)
       }
@@ -176,9 +182,9 @@ async function sweep(options: SweepOptions): Promise<void> {
       (summary ? ` — ${summary}` : ' — nothing to do'),
   )
   if (failures > 0) {
-    // TODO(stage 3): post this single alert line to Slack instead of stderr —
-    // a failed sweep must never fail silently (spec §10).
-    console.error(`[alert] sweep completed with ${failures} thread failures`)
+    // One alert line, never silent failure (spec §10). postAlert falls back to
+    // stderr when Slack isn't configured.
+    await postAlert(`triage sweep completed with ${failures} thread failures`)
   }
   store.close()
 }

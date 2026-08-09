@@ -8,6 +8,7 @@
   },
   "scripts": {
     "sweep": "tsx src/pipelines/triage.ts",
+    "digest": "tsx src/pipelines/digest.ts",
     "auth:gmail": "tsx scripts/get_gmail_token.ts",
     "test": "vitest run",
     "test:eval": "RUN_TRIAGE_EVAL=1 vitest run tests/triage.eval.test.ts",
@@ -15,6 +16,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.30.0",
+    "@slack/web-api": "^7.8.0",
     "better-sqlite3": "^11.0.0",
     "dotenv": "^16.4.0",
     "googleapis": "^144.0.0"

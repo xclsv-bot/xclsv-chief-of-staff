@@ -30,8 +30,10 @@ function stateFor(partial: Partial<ThreadState> & { threadId: string }): ThreadS
     snoozedUntil: null,
     slackRefs: null,
     lastMessageId: null,
+    lastMessageDate: null,
     subject: null,
     reason: null,
+    digestLine: null,
     updatedAt: new Date().toISOString(),
     ...partial,
   }
@@ -117,13 +119,14 @@ describe('buildLabelChange — mutual exclusivity (spec §3)', () => {
 describe('parseClassification', () => {
   it('parses clean JSON', () => {
     const result = parseClassification(
-      '{"label": "2-Review", "confidence": "high", "needs_reading": false, "reason": "automated report"}',
+      '{"label": "2-Review", "confidence": "high", "needs_reading": false, "reason": "automated report", "digest_line": "Reports / AffiliateDash — weekly summary"}',
     )
     expect(result).toEqual({
       label: '2-Review',
       confidence: 'high',
       needsReading: false,
       reason: 'automated report',
+      digestLine: 'Reports / AffiliateDash — weekly summary',
     })
   })
 
@@ -184,13 +187,32 @@ describe('StateStore', () => {
       snoozedUntil: null,
       slackRefs: null,
       lastMessageId: 'm9',
+      lastMessageDate: '2026-08-07T16:00:00.000Z',
       subject: 'Activation dates',
       reason: null,
+      digestLine: 'Jess / Rebet — waiting on activation dates',
     }
     store.upsert(record)
     store.upsert({ ...record, nudgeCount: 2 })
     expect(store.get('t1')).toMatchObject({ threadId: 't1', nudgeCount: 2 })
     expect(store.byLabel('3-Waiting')).toHaveLength(1)
+    store.close()
+  })
+
+  it('saves and retrieves digest number → thread mappings', () => {
+    const store = new StateStore(':memory:')
+    store.saveDigest('C123', '1723222800.000100', [
+      { number: 1, threadId: 't1', section: 'needs_you' },
+      { number: 2, threadId: 't2', section: 'ready_nudges' },
+    ])
+    expect(store.latestDigest()).toMatchObject({
+      channel: 'C123',
+      slackTs: '1723222800.000100',
+      items: [
+        { number: 1, threadId: 't1', section: 'needs_you' },
+        { number: 2, threadId: 't2', section: 'ready_nudges' },
+      ],
+    })
     store.close()
   })
 })
