@@ -18,7 +18,6 @@ describe('tool dispatch (spec §5.6)', () => {
       'create_task',
       'read_todays_digest',
       'search_email',
-      'send_slack_note',
     ])
   })
 

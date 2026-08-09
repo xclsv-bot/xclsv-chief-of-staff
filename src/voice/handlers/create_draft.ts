@@ -1,8 +1,8 @@
 // create_draft (v1.4 spec §5.2) — a voice-dictated reply runs through the SAME
-// machinery as the memo pipeline: generateDraft in Zaire's voice with corpus
-// retrieval, the mechanical hard-rule validators, a Slack approval post, and a
-// pending row in the shared drafts table. Voice cannot approve (spec §12) —
-// the ✅ / "approve #" gate in #inbox-gps stays the only way to Gmail Drafts.
+// machinery every other producer uses: generateDraft in Zaire's voice with
+// corpus retrieval, the mechanical hard-rule validators, a Slack approval post,
+// and a pending row in the shared drafts table. Voice cannot approve (spec §12)
+// — the ✅ reaction in #inbox-gps stays the only way to Gmail Drafts.
 
 import Anthropic from '@anthropic-ai/sdk'
 import { fetchThread, gmailClient } from '../../connectors/gmail.js'

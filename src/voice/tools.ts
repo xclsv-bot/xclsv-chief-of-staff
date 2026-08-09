@@ -6,7 +6,9 @@ import { createDraft } from './handlers/create_draft.js'
 import { createTask } from './handlers/create_task.js'
 import { readTodaysDigest } from './handlers/read_digest.js'
 import { searchEmail } from './handlers/search_email.js'
-import { sendSlackNote } from './handlers/send_slack_note.js'
+// send_slack_note was retired 2026-08-09 with the memo pipeline — nothing
+// downstream consumed the [voice]-tagged posts once src/pipelines/memo.ts
+// went away, so the tool would have succeeded silently and done nothing.
 
 export const toolSchemas = [
   {
@@ -74,22 +76,6 @@ export const toolSchemas = [
   },
   {
     type: 'function',
-    name: 'send_slack_note',
-    description:
-      'Drop an async instruction into #inbox-gps for the memo pipeline to process on its next run. Use when Zaire is giving detailed instructions that need to hit the text pipeline (e.g., long context that should become a proper written reply).',
-    parameters: {
-      type: 'object',
-      properties: {
-        message: {
-          type: 'string',
-          description: 'The exact message to post as if Zaire typed it.',
-        },
-      },
-      required: ['message'],
-    },
-  },
-  {
-    type: 'function',
     name: 'search_email',
     description:
       'Search Zaire\'s Gmail for a specific topic, person, or thread. Use when Zaire asks "what did X say?" or "when did we last talk to Y?"',
@@ -115,7 +101,6 @@ const HANDLERS: Record<string, (args: Record<string, unknown>) => Promise<string
   read_todays_digest: readTodaysDigest,
   create_draft: createDraft,
   create_task: createTask,
-  send_slack_note: sendSlackNote,
   search_email: searchEmail,
 }
 

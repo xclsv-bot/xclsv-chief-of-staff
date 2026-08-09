@@ -64,6 +64,8 @@ Posted to \#inbox-gps at 8:00 AM and 3:00 PM PT. Skipped if empty. Capped at 10 
 
 **5. Voice-Command Grammar**
 
+> **Superseded 2026-08-09** by the Realtime voice PWA — see `docs/voice-interface-spec.md`. The batched voice-memo intake and its Tell/Push/Skip/Archive/Delegate/Nudge grammar were retired along with `src/pipelines/memo.ts`; digest replies now flow through the phone-based voice session and its tool calls (`create_draft`, `create_task`). This section is preserved for historical context on the original approval-gate design.
+
 One batched voice memo replies to a digest. Zaire references items by number or name. The agent splits the transcript per item and applies one verb per item:
 
 |                              |                                                                                                                                        |

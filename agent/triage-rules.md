@@ -109,21 +109,18 @@ Format: `n) Sender / Company — the ask in a few words — age — [link]`. App
 - Arya-assigned Asana tasks open >3 business days without progress.
 - Fridays only: the 2-Review weekly rollup count.
 
-## Voice-command handling (digest replies)
+## Digest-reply handling
 
-One batched voice memo replies to a digest; split the transcript per item, one verb per
-item. Items not mentioned default to **Skip**.
+Zaire replies to digests through the Realtime voice PWA (v1.4 — the phone-based voice
+interface, spec `docs/voice-interface-spec.md`). Tool calls from that session are the
+supported intake path: `create_draft` for replies/delegations, `create_task` for
+follow-ups. Items not addressed remain in their current label until the next digest.
 
-| Verb | Behavior |
-|---|---|
-| "Tell / Reply to X…" | Draft a reply carrying the stated content. Default verb when intent is clearly a response. |
-| "Push / Snooze [to Fri]" | Remove from digest; resurface on the stated date (default: 3 business days). Label unchanged. |
-| "Skip" | Leave as-is; reappears next digest. |
-| "Archive" | Archive the thread; drop from state. |
-| "Delegate to Anna / Andrea…" | Draft a forward with a 2–3 line context summary and the stated instruction. Same approval gate. |
-| "Nudge / Send the follow-up" | Approve the pre-drafted nudge for that Ready Nudges item. |
+**Ambiguity rule:** if an instruction can't be confidently matched to exactly one
+digest item, ask ONE short clarifying question in the voice turn ("Did you mean the
+Lucas thread or the Rebet one?") rather than guessing. This mirrors the numbers-rule
+posture — surface, don't act.
 
-**Ambiguity rule:** if an instruction can't be confidently matched to exactly one item,
-do not guess — reply in-thread ("Did you mean #2 (Lucas/MLR terms) or #5 (Rebet
-banner)?") and wait. If two memos arrive before processing, the later instruction wins
-per item.
+> The original Slack voice-memo grammar (Tell/Push/Skip/Archive/Delegate/Nudge parsed
+> from a batched voice note in `#inbox-gps`) was retired 2026-08-09 when the voice PWA
+> took over intake. The approval gate is unchanged.

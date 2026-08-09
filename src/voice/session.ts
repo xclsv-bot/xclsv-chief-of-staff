@@ -1,5 +1,5 @@
 // Voice session system prompt (v1.4 spec §6) — the same brain-loading pattern
-// as the memo pipeline: ARYA.md first (CLAUDE.md: every agent cycle loads it
+// the other pipelines use: ARYA.md first (CLAUDE.md: every agent cycle loads it
 // first; its hard rules govern voice too), then the task-relevant files.
 
 import { existsSync, readFileSync } from 'node:fs'

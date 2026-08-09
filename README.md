@@ -1,9 +1,10 @@
 # Arya — XCLSV Media Chief of Staff Agent
 
 An executive-assistant agent over Gmail, Slack, Zoom, and Asana for Zaire Williams.
-Arya triages email into the Email GPS label system, posts Slack digests, turns batched
-voice memos into reply drafts in Zaire's voice, nudges stale threads, digests Zoom calls
-into routed action items, and works tasks assigned to her in Asana.
+Arya triages email into the Email GPS label system, posts Slack digests, drafts replies
+in Zaire's voice on his instruction (spoken through the Realtime voice PWA or given via
+Asana), nudges stale threads, digests Zoom calls into routed action items, and works
+tasks assigned to her in Asana.
 
 - **Authoritative spec:** `docs/build-spec.md` (v1.3)
 - **Builder instructions:** `CLAUDE.md`
@@ -106,56 +107,32 @@ populated `data/state.db` should read like spec §4's example.
 Digest posts are plain Slack messages; deleting them loses nothing (state lives in
 `data/state.db`).
 
-### Stage 4 — Voice memo → parse → draft → approval gate
+### Stage 4 — Draft generation + approval gate
 
-**What landed:** `src/pipelines/memo.ts` (the `#inbox-gps` poller), `src/pipelines/draft.ts`
-(draft generation + mechanical hard-rule backstops), `src/transcribe.ts` (Whisper on
-Slack voice notes — the plumbing shared with the Agenda Agent), and Gmail reply-draft
-creation (`drafts.create` with proper In-Reply-To threading — still no send path).
+**What landed:** `src/pipelines/draft.ts` (draft generation + mechanical hard-rule
+backstops) and Gmail reply-draft creation (`drafts.create` with proper In-Reply-To
+threading — still no send path). Every downstream pipeline (nudge, call_ingest, voice
+`create_draft`) composes email through the same `loadDraftFiles()` + `generateDraft()`
+choke point so the writing profile, numbers-rule backstop, and recipient guard apply
+uniformly.
 
-The loop (spec §5–7): Zaire replies to a digest in Slack — batched voice memo or text.
-The poller transcribes, parses the voice-command grammar per item (Tell/Reply, Push,
-Skip, Archive, Delegate, Nudge) against the stored digest numbering, and executes:
-replies/delegations/nudges become drafts posted as threaded replies (header line first,
-so a wrong-thread draft is visually obvious), snoozes set resurface dates, archives hit
-Gmail. A ✅ reaction from Zaire finalizes the draft in Gmail Drafts on the correct
-thread and confirms "Draft ready in Gmail — send when ready." A further reply with
-changes supersedes and regenerates. Nothing is ever auto-approved; drafts pending past
-24h surface in the digest's Flags section.
+The approval gate: drafts land as threaded replies in `#inbox-gps` with a header line
+first (so a wrong-thread draft is visually obvious). A ✅ reaction from Zaire finalizes
+the draft in Gmail Drafts on the correct thread. A further reply with changes
+supersedes and regenerates. Nothing is ever auto-approved; drafts pending past 24h
+surface in the digest's Flags section.
 
-**Guardrails in code, not vibes:** only messages from `ZAIRE_SLACK_USER_ID` are parsed
-as instructions (hard rule 5). The numbers rule has a mechanical backstop —
+**Guardrails in code, not vibes:** the numbers rule has a mechanical backstop —
 `validateDraft` regex-scans every draft for dollar figures/percentages/`50k`-style
-tokens not present in Zaire's memo and warns loudly in the approval post, plus a
-wrong-recipient check against thread participants. Ambiguous instructions produce a
-"Did you mean #2 or #5?" question, never a guess; later memos win per item; duplicate
-actions on an already-handled item get "already handled at [time]."
+tokens not present in Zaire's instruction and warns loudly in the approval post, plus a
+wrong-recipient check against thread participants.
 
-**Slack app additions (once):** add bot scopes `files:read` and `reactions:read`
-(alongside `chat:write`, `channels:history`), reinstall the app, and set
-`ZAIRE_SLACK_USER_ID` (Slack profile → ⋯ → Copy member ID) and `OPENAI_API_KEY`
-(Whisper) in `.env`.
-
-**How to run:**
-
-```
-npm run inbox -- --dry-run        # transcribes + parses, prints intended actions
-npm run inbox                     # executes: posts drafts, applies ✅ approvals
-```
-
-Poll every few minutes during working hours, e.g. cron (`TZ=America/Los_Angeles`):
-`*/5 7-19 * * * cd <repo> && npm run inbox`.
-
-**How to verify:** `npm test` (grammar parsing, later-wins, business-day snooze math,
-numbers-rule backstop, recipient guard, MIME threading, draft state machine, stale-draft
-flags). End-to-end: reply to a digest with "reply to 1 — tell them yes" as text, watch
-the draft appear in-thread, react ✅, and find the draft in Gmail Drafts on the right
-thread. Voice path: same, as a Slack voice note.
-
-**How to roll back:** stop the inbox cron entry. Pending drafts are just Slack posts +
-DB rows; Gmail drafts created by approvals are visible in the Drafts folder and can be
-discarded by hand (the agent itself never deletes). `data/state.db` remains the single
-source of state.
+> **Historical:** the original Stage 4 shipped a Slack voice-memo poller
+> (`src/pipelines/memo.ts` + `src/transcribe.ts` + `npm run inbox`) that parsed a
+> voice-command grammar (Tell/Push/Skip/Archive/Delegate/Nudge) against digest item
+> numbers. Retired 2026-08-09 in favor of the Realtime voice PWA (v1.4, see
+> `docs/voice-interface-spec.md`) — voice intake now goes through the phone. The
+> approval gate above is unchanged.
 
 ### Stage 5 — Voice corpus builder + retrieval
 
@@ -319,29 +296,19 @@ a tunnel (cloudflared / `tailscale serve`), and bookmark
 install to the home screen. Revisit Vercel only after state moves to a hosted
 DB (v1.5 candidate).
 
-### Audio digest + voice approval (hands-free loop)
+### Audio digest (hands-free listen)
 
 **What landed:** every posted digest also gets a voice-note rendition attached in its
 thread (`src/tts.ts`, ElevenLabs) — the same rundown written for the ear: "3 things
 need you. Number 1. Luis / Outlier — asking to confirm September slate scope, waiting
-3 days. … Say nudge 4 to send it." Configured by setting `ELEVENLABS_API_KEY` (and
-optionally `ELEVENLABS_VOICE_ID`) in `.env`; without it the digest is text-only. A TTS
-failure never blocks the text digest. The Slack app needs the `files:write` scope for
-the upload.
+3 days." Configured by setting `ELEVENLABS_API_KEY` (and optionally `ELEVENLABS_VOICE_ID`)
+in `.env`; without it the digest is text-only. A TTS failure never blocks the text
+digest. The Slack app needs the `files:write` scope for the upload.
 
-The grammar also gained an **approve** verb: saying "approve 2" / "send it" /
-"number 2 looks good" in a digest reply finalizes that item's pending draft in Gmail
-Drafts — the same approval gate as the ✅ reaction, by voice. So the entire loop runs
-by ear and voice from the phone: listen to the digest, send one memo back, listen to
-nothing — drafts appear in-thread; next memo can approve or revise them. The only
-mandatory screen touch left is the send button in Gmail (v1 boundary, by design).
-
-**The intended morning:** Arya posts the 8:00 digest with audio. On the dog walk:
-play it, hold the mic button in `#inbox-gps`, talk through the items by number. By the
-time you're back, drafts are threaded under the digest. Skim the header lines, say or
-tap approve, and hit send from the Gmail Drafts folder when you're at a screen. Gmail
-stays a readable dashboard (labels are maintained continuously) — but the day starts
-in Slack, not the raw inbox.
+**The intended morning:** Arya posts the 8:00 digest with audio. On the dog walk: play
+it. Open the voice PWA to reply, dictate, or file — drafts flow through the same
+approval gate and land in Gmail Drafts. The mandatory screen touch left is the send
+button in Gmail (v1 boundary, by design).
 
 ## Repo layout
 

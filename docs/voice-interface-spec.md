@@ -21,7 +21,7 @@ The voice layer is a thin front-door. All state, memory, drafts, and executive l
 - No native mobile app. It's a PWA installed to home screen.
 - No sending email from voice. Voice creates *drafts* only, same rule as v1.3.
 - No multi-user support. Zaire only. Shared-secret auth on the URL.
-- No voice-driven approvals of pending drafts in v1. Approvals still happen via ✅ reaction or explicit "approve #N" in the memo pipeline. (See §12.)
+- No voice-driven approvals of pending drafts in v1. Approvals still happen via ✅ reaction in the Slack approval thread. (See §12.)
 - No streaming corrections mid-response ("wait, change that"). Turn-based only.
 
 ---
@@ -66,8 +66,7 @@ chief-of-staff/
 │       │   ├── read_digest.ts
 │       │   ├── create_draft.ts
 │       │   ├── create_task.ts
-│       │   ├── send_slack_note.ts
-│       │   └── search_email.ts
+│       │   └── search_email.ts   # send_slack_note.ts retired 2026-08-09 (§5.4)
 │       └── transcript.ts    # Persists session transcripts to SQLite
 └── web/                     # Next.js 15 App Router PWA
     ├── app/
@@ -166,7 +165,7 @@ Wire to existing code: `import { StateStore } from '../../state.js'`.
 }
 ```
 
-**Handler:** Reuses `makeDraft()` from `src/pipelines/memo.ts` (may need to extract the pure-function part). Persists the draft with `StateStore.createDraft()`. Returns: `"Draft ready for thread [subject]. It's pending your approval in Slack — check the #inbox-gps thread."`
+**Handler:** Calls `makeDraft()` from `src/pipelines/draft.ts` (the shared draft composer). Persists the draft with `StateStore.createDraft()`. Returns: `"Draft ready for thread [subject]. It's pending your approval in Slack — check the #inbox-gps thread."`
 
 ### 5.3 `create_task`
 
@@ -196,23 +195,13 @@ Wire to existing code: `import { StateStore } from '../../state.js'`.
 
 Env addition: `ASANA_TOKEN` (already effectively available in `TOOLS.md`, formalize in `.env`).
 
-### 5.4 `send_slack_note`
+### 5.4 `send_slack_note` — **removed 2026-08-09**
 
-```typescript
-{
-  name: 'send_slack_note',
-  description: 'Drop an async instruction into #inbox-gps for the memo pipeline to process on its next run. Use when Zaire is giving detailed instructions that need to hit the text pipeline (e.g., long context that should become a proper written reply).',
-  parameters: {
-    type: 'object',
-    properties: {
-      message: { type: 'string', description: 'The exact message to post as if Zaire typed it.' },
-    },
-    required: ['message'],
-  },
-}
-```
-
-**Handler:** Uses `slackClient` from `src/connectors/slack.ts`, posts to the channel from `SLACK_INBOX_GPS_CHANNEL_ID` as Zaire's bot user. Marks it as originating from voice with a leading `[voice]` tag so the memo pipeline can trace it. Returns: `"Sent to #inbox-gps."`
+Originally routed long dictations from voice into `#inbox-gps` for the memo
+pipeline (`src/pipelines/memo.ts`) to process on its next run. That pipeline
+was deleted when the voice PWA took over intake; `create_draft` now handles
+composed replies directly in the same session. Kept in the spec as a header
+so `5.5` / `5.6` numbering doesn't shift silently.
 
 ### 5.5 `search_email`
 
@@ -252,7 +241,6 @@ export async function executeToolCall(
     case 'read_todays_digest': return readTodaysDigest(args)
     case 'create_draft': return createDraft(args)
     case 'create_task': return createTask(args)
-    case 'send_slack_note': return sendSlackNote(args)
     case 'search_email': return searchEmail(args)
     default: throw new Error(`Unknown tool: ${name}`)
   }
@@ -302,7 +290,7 @@ export function buildVoiceSystemPrompt(): string {
 }
 ```
 
-This is the same brain-loading pattern the memo pipeline uses. Any correction Zaire has ever logged in `feedback-log.md` applies to voice sessions too.
+This is the same brain-loading pattern the other pipelines use (`draft.ts` and friends). Any correction Zaire has ever logged in `feedback-log.md` applies to voice sessions too.
 
 ---
 
@@ -480,7 +468,7 @@ Deferred to v1.5+ (write as future work in `feedback-log.md`):
 - Each handler returns a string under 500 chars for successful paths.
 - Auth rejects missing / wrong secret.
 
-**Regression:** Existing memo pipeline still works. Voice tool calls that create drafts must not conflict with drafts created by the memo pipeline (same schema, same table).
+**Regression:** Voice-generated drafts must land in the same `drafts` table used by every other producer (`call_ingest`, `triage`) so the Slack approval gate stays the single choke point. Reactions in the approval thread apply uniformly regardless of which pipeline created the draft.
 
 ---
 
@@ -506,9 +494,9 @@ For the executing Claude Code agent — do these in order, commit after each.
 
 9. **Tool: `create_draft`.** Implement third. Verify voice-dictated draft appears in Gmail Drafts.
 
-10. **Tool: `send_slack_note`.** Implement fourth. Verify text posts to #inbox-gps.
+10. **Tool: `send_slack_note`.** ~~Implement fourth.~~ Retired 2026-08-09 alongside the memo pipeline — see §5.4. Skip this step.
 
-11. **Tool: `search_email`.** Implement fifth. Verify search results read back.
+11. **Tool: `search_email`.** Implement fourth. Verify search results read back.
 
 12. **Transcript persistence.** Add tables to `StateStore`. Wire `/api/tool-call` to log every call.
 
