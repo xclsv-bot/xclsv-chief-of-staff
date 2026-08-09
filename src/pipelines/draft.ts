@@ -189,6 +189,6 @@ export function buildDraftPost(draft: GeneratedDraft, warnings: string[]): strin
     draft.body,
     '',
     ...warnings.map((w) => `:warning: ${w}`),
-    '_React ✅ to approve · reply in this thread with changes_',
+    '_React ✅ or say "approve #" to send to Gmail Drafts · reply in this thread with changes_',
   ].join('\n')
 }

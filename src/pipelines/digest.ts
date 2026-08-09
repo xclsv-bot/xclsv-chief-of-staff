@@ -70,9 +70,27 @@ export interface DigestInput {
   extraFlags?: string[]
 }
 
+function spokenLine(thread: ThreadState, now: Date): string {
+  const summary = thread.digestLine ?? thread.subject ?? 'an unlabeled thread'
+  const tags = [
+    thread.lowConfidence ? "I'm not fully sure this one needs you" : null,
+    thread.needsReading ? 'this one needs a proper read' : null,
+  ]
+    .filter(Boolean)
+    .join('; ')
+  const days = thread.lastMessageDate
+    ? calendarDays(new Date(thread.lastMessageDate), now)
+    : null
+  const age =
+    days === null ? '' : days === 0 ? ', from today' : days === 1 ? ', waiting 1 day' : `, waiting ${days} days`
+  return `${summary}${age}${tags ? ` — ${tags}` : ''}`
+}
+
 export interface BuiltDigest {
   empty: boolean
   text: string
+  /** The same digest written for the ear — read aloud by TTS, no links. */
+  speech: string
   items: DigestItemRef[]
 }
 
@@ -100,20 +118,38 @@ export function buildDigest(input: DigestInput): BuiltDigest {
 
   const items: DigestItemRef[] = []
   const sections: string[] = []
+  const spoken: string[] = []
   let n = 0
 
   if (shown.length > 0) {
+    spoken.push(
+      shown.length === 1
+        ? 'One thing needs you.'
+        : `${shown.length} things need you.`,
+    )
     const lines = shown.map((t) => {
       items.push({ number: ++n, threadId: t.threadId, section: 'needs_you' })
+      spoken.push(`Number ${n}. ${spokenLine(t, now)}.`)
       return `${n}) ${itemLine(t, now)}`
     })
-    if (overflow > 0) lines.push(`_+${overflow} more in 1-Respond_`)
+    if (overflow > 0) {
+      lines.push(`_+${overflow} more in 1-Respond_`)
+      spoken.push(`Plus ${overflow} more waiting in 1-Respond beyond the cap.`)
+    }
     sections.push(`*A. Needs You*\n${lines.join('\n')}`)
   }
 
   if (readyNudges.length > 0) {
+    spoken.push(
+      readyNudges.length === 1
+        ? 'One follow-up is ready to go.'
+        : `${readyNudges.length} follow-ups are ready to go.`,
+    )
     const lines = readyNudges.map((t) => {
       items.push({ number: ++n, threadId: t.threadId, section: 'ready_nudges' })
+      spoken.push(
+        `Number ${n}. ${spokenLine(t, now)} — ${waitingDays(t)} business days quiet. Say nudge ${n} to send it.`,
+      )
       return `${n}) ${itemLine(t, now)} — waiting ${waitingDays(t)} business days`
     })
     sections.push(`*B. Ready Nudges*\n${lines.join('\n')}`)
@@ -131,11 +167,20 @@ export function buildDigest(input: DigestInput): BuiltDigest {
   }
   if (flags.length > 0) {
     sections.push(`*C. Flags*\n${flags.map((f) => `• ${f}`).join('\n')}`)
+    spoken.push(
+      flags.length === 1 ? `One flag: ${flags[0]}.` : `${flags.length} flags. ${flags.join('. ')}.`,
+    )
   }
+
+  spoken.push(
+    'Reply here when ready — voice or text. Item numbers plus what to do: ' +
+      'tell, push, skip, archive, delegate, nudge, or approve.',
+  )
 
   return {
     empty: sections.length === 0,
     text: sections.join('\n\n'),
+    speech: sections.length === 0 ? '' : spoken.join(' '),
     items,
   }
 }
@@ -176,12 +221,33 @@ async function run(dryRun: boolean): Promise<void> {
   if (dryRun) {
     console.log('[dry-run] would post digest:\n')
     console.log(digest.text)
+    console.log('\n[dry-run] audio script:\n')
+    console.log(digest.speech)
   } else {
     const channel = requireEnv('SLACK_INBOX_GPS_CHANNEL_ID')
     const client = slackClient(requireEnv('SLACK_BOT_TOKEN'))
     const ts = await postMessage(client, channel, digest.text)
     store.saveDigest(channel, ts, digest.items)
     console.log(`digest posted (${digest.items.length} items, ts=${ts})`)
+
+    // Audio digest: same rundown, for the ear (dog walks, the car). Optional —
+    // configured via ELEVENLABS_API_KEY — and never allowed to sink the digest.
+    const ttsKey = process.env.ELEVENLABS_API_KEY
+    if (ttsKey && digest.speech) {
+      try {
+        const { synthesize } = await import('../tts.js')
+        const { uploadAudio } = await import('../connectors/slack.js')
+        const audio = await synthesize(
+          digest.speech,
+          ttsKey,
+          optionalEnv('ELEVENLABS_VOICE_ID', '21m00Tcm4TlvDq8ikWAM'),
+        )
+        await uploadAudio(client, channel, ts, audio, 'digest.mp3', 'Listen to this digest')
+        console.log('audio digest attached')
+      } catch (error) {
+        console.error('audio digest failed (text digest unaffected):', error)
+      }
+    }
   }
   store.close()
 }

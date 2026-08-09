@@ -164,6 +164,34 @@ describe('buildDigest — spec §4', () => {
   })
 })
 
+describe('speech script (audio digest)', () => {
+  it('reads the same items aloud — numbered, aged in words, no links', () => {
+    const digest = build({
+      respond: [
+        thread({
+          digestLine: 'Luis / Outlier — asking to confirm September slate scope',
+          lastMessageDate: daysAgo(3),
+        }),
+      ],
+      waiting: [
+        thread({ label: '3-Waiting', digestLine: 'Jess / Rebet — activation dates', waitingSince: daysAgo(6) }),
+      ],
+    })
+    expect(digest.speech).toContain('One thing needs you.')
+    expect(digest.speech).toContain(
+      'Number 1. Luis / Outlier — asking to confirm September slate scope, waiting 3 days.',
+    )
+    expect(digest.speech).toContain('Say nudge 2 to send it.')
+    expect(digest.speech).toContain('Reply here when ready')
+    expect(digest.speech).not.toContain('http')
+    expect(digest.speech).not.toContain('<')
+  })
+
+  it('is empty when the digest is empty', () => {
+    expect(build().speech).toBe('')
+  })
+})
+
 describe('isFridayPT', () => {
   it('uses Pacific time, not UTC', () => {
     // Saturday 02:00 UTC is still Friday evening in PT.

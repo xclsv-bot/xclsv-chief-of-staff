@@ -52,6 +52,15 @@ describe('parseActions', () => {
     ).toHaveLength(0)
     expect(parseActions('sure, sounds good!')).toHaveLength(0)
   })
+
+  it('parses the approve verb (voice approval — same gate as the ✅ reaction)', () => {
+    const actions = parseActions(
+      '{"actions": [{"verb": "approve", "item_number": 2, "content": "", "delegate_to": null, "snooze_until": null, "question": null}]}',
+    )
+    expect(actions).toEqual([
+      expect.objectContaining({ verb: 'approve', itemNumber: 2 }),
+    ])
+  })
 })
 
 describe('lastWinsPerItem (spec §5: later instruction wins per item)', () => {
@@ -159,7 +168,7 @@ describe('buildDraftPost (spec §6–7)', () => {
     const lines = post.split('\n')
     expect(lines[0]).toBe('*To Luis (Outlier) — Re: Slate*')
     expect(post).toContain(':warning: contains a number')
-    expect(post).toContain('React ✅ to approve')
+    expect(post).toContain('React ✅ or say "approve #"')
   })
 })
 

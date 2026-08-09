@@ -76,6 +76,24 @@ export async function fetchReplies(
   )
 }
 
+/** Upload an audio file into a thread — needs the files:write bot scope. */
+export async function uploadAudio(
+  client: WebClient,
+  channelId: string,
+  threadTs: string,
+  file: Buffer,
+  filename: string,
+  title: string,
+): Promise<void> {
+  await client.files.uploadV2({
+    channel_id: channelId,
+    thread_ts: threadTs,
+    file,
+    filename,
+    title,
+  })
+}
+
 /** Download a Slack file (voice note) — needs the files:read bot scope. */
 export async function downloadFile(urlPrivate: string, token: string): Promise<Buffer> {
   const res = await fetch(urlPrivate, { headers: { Authorization: `Bearer ${token}` } })

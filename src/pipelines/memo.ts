@@ -46,6 +46,7 @@ export const APPROVE_EMOJI = ['white_check_mark', 'heavy_check_mark']
 export type MemoVerb =
   | 'reply'
   | 'revise'
+  | 'approve'
   | 'snooze'
   | 'skip'
   | 'archive'
@@ -66,7 +67,8 @@ export interface MemoAction {
 }
 
 const VERBS: MemoVerb[] = [
-  'reply', 'revise', 'snooze', 'skip', 'archive', 'delegate', 'nudge', 'clarify',
+  'reply', 'revise', 'approve', 'snooze', 'skip', 'archive', 'delegate', 'nudge',
+  'clarify',
 ]
 
 /** Tolerant parse of the grammar model's output; garbage → [] (caller asks). */
@@ -154,9 +156,11 @@ export function buildMemoSystemPrompt(
     '',
     'Verbs: reply (draft a reply carrying his stated content) · revise (changes to',
     'an existing pending draft — use when the item already has draft: pending and',
-    'he is adjusting it) · snooze (resurface later; snooze_until as YYYY-MM-DD if',
-    'he named a day, else null) · skip · archive · delegate (delegate_to = teammate',
-    'name) · nudge (approve/send the follow-up for a Ready Nudges item).',
+    'he is adjusting it) · approve ("approve #2", "send it", "looks good" on an item',
+    'with draft: pending — finalizes that draft in Gmail, same as a ✅ reaction) ·',
+    'snooze (resurface later; snooze_until as YYYY-MM-DD if he named a day, else',
+    'null) · skip · archive · delegate (delegate_to = teammate name) · nudge',
+    '(approve/send the follow-up for a Ready Nudges item).',
     '',
     'AMBIGUITY RULE (hard): if an instruction cannot be confidently matched to',
     'exactly ONE item, do not guess — emit verb "clarify" with item_number null and',
@@ -320,6 +324,28 @@ async function executeAction(
         if (state) rt.store.upsert({ ...state, label: 'Archive', snoozedUntil: null })
       }
       await say(rt, digest.slackTs, `Archived #${item.number}.`)
+      return
+    }
+    case 'approve': {
+      const pending = rt.store
+        .draftsForThread(item.threadId)
+        .filter((d) => d.status === 'pending')
+        .at(-1)
+      if (!pending) {
+        const approved = rt.store
+          .draftsForThread(item.threadId)
+          .filter((d) => d.status === 'approved')
+          .at(-1)
+        await say(
+          rt,
+          digest.slackTs,
+          approved
+            ? `#${item.number} already approved at ${approved.updatedAt} — draft is in Gmail.`
+            : `#${item.number} has no pending draft to approve — tell me what to say and I'll draft it.`,
+        )
+        return
+      }
+      await finalizeApproval(rt, pending)
       return
     }
     case 'revise': {

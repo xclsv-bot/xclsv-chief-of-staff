@@ -157,6 +157,30 @@ DB rows; Gmail drafts created by approvals are visible in the Drafts folder and 
 discarded by hand (the agent itself never deletes). `data/state.db` remains the single
 source of state.
 
+### Audio digest + voice approval (hands-free loop)
+
+**What landed:** every posted digest also gets a voice-note rendition attached in its
+thread (`src/tts.ts`, ElevenLabs) — the same rundown written for the ear: "3 things
+need you. Number 1. Luis / Outlier — asking to confirm September slate scope, waiting
+3 days. … Say nudge 4 to send it." Configured by setting `ELEVENLABS_API_KEY` (and
+optionally `ELEVENLABS_VOICE_ID`) in `.env`; without it the digest is text-only. A TTS
+failure never blocks the text digest. The Slack app needs the `files:write` scope for
+the upload.
+
+The grammar also gained an **approve** verb: saying "approve 2" / "send it" /
+"number 2 looks good" in a digest reply finalizes that item's pending draft in Gmail
+Drafts — the same approval gate as the ✅ reaction, by voice. So the entire loop runs
+by ear and voice from the phone: listen to the digest, send one memo back, listen to
+nothing — drafts appear in-thread; next memo can approve or revise them. The only
+mandatory screen touch left is the send button in Gmail (v1 boundary, by design).
+
+**The intended morning:** Arya posts the 8:00 digest with audio. On the dog walk:
+play it, hold the mic button in `#inbox-gps`, talk through the items by number. By the
+time you're back, drafts are threaded under the digest. Skim the header lines, say or
+tap approve, and hit send from the Gmail Drafts folder when you're at a screen. Gmail
+stays a readable dashboard (labels are maintained continuously) — but the day starts
+in Slack, not the raw inbox.
+
 ## Repo layout
 
 See the layout block in `CLAUDE.md`. Behavior lives in `agent/` (markdown, tuned by
