@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Slack command poller (on-demand triage sweep) as a launchd user agent.
+  Why launchd, not cron: crontab writes need Full Disk Access on macOS, which
+  the Claude agent deliberately does not have; ~/Library/LaunchAgents is not
+  TCC-protected, so the agent can install/update this itself.
+
+  Install (as the arya user, no FDA needed):
+    cp scripts/launchd/com.xclsv.arya.commands.plist ~/Library/LaunchAgents/
+    launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.xclsv.arya.commands.plist
+  Update after editing: launchctl kickstart -k gui/$(id -u)/com.xclsv.arya.commands
+  Remove: launchctl bootout gui/$(id -u)/com.xclsv.arya.commands
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.xclsv.arya.commands</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/opt/homebrew/bin/npm</string>
+    <string>run</string>
+    <string>commands</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/arya/clawd/chief-of-staff</string>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin</string>
+  </dict>
+
+  <!-- Every 60s; the poller exits instantly when no command is waiting.
+       (Cron's 7-20h gating is dropped — an idle run is one Slack API call.) -->
+  <key>StartInterval</key>
+  <integer>60</integer>
+
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>StandardOutPath</key>
+  <string>/Users/arya/clawd/chief-of-staff/data/cron.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/arya/clawd/chief-of-staff/data/cron.log</string>
+</dict>
+</plist>
