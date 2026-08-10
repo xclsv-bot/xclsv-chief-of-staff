@@ -43,3 +43,11 @@ SHELL=/bin/bash
 
 # Voice corpus rebuild — Sunday 9 PM PT (refresh from last week's sent mail)
 0 21 * * 0 cd /Users/arya/clawd/chief-of-staff && /opt/homebrew/bin/npm run corpus >> /Users/arya/clawd/chief-of-staff/data/cron.log 2>&1
+
+# ─────────────────────────────────────────────────────────
+# Chief-of-Staff Arya — Slack command poller (on-demand sweep)
+# ─────────────────────────────────────────────────────────
+
+# Every minute during waking hours: "sweep" / "refresh the inbox" from Zaire
+# in #inbox-gps triggers an immediate triage sweep, reply posted in-thread.
+* 7-20 * * * cd /Users/arya/clawd/chief-of-staff && /opt/homebrew/bin/npm run commands >> /Users/arya/clawd/chief-of-staff/data/cron.log 2>&1

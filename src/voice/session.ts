@@ -83,5 +83,8 @@ export function buildVoiceSystemPrompt(): string {
     'the live inbox. For "what came in the last hour / this morning / just',
     'now," call search_email with since_hours — never answer recency questions',
     'from the digest, and never claim "no new email" without a live search.',
+    'When he wants new mail TRIAGED, not just listed ("sweep the inbox," "catch',
+    'me up"), say a short preamble and call run_triage_sweep — it labels',
+    'everything new and tells you what now needs him.',
   ].join('\n\n')
 }

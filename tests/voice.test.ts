@@ -5,6 +5,8 @@
 import { describe, expect, it } from 'vitest'
 import { formatSpokenDigest } from '../src/voice/handlers/read_digest.js'
 import { buildGmailQuery } from '../src/voice/handlers/search_email.js'
+import { isSweepCommand } from '../src/pipelines/commands.js'
+import { summarizeSweep } from '../src/pipelines/triage.js'
 import { nowLinePT } from '../src/voice/session.js'
 import { executeToolCall, registeredTools, toolSchemas } from '../src/voice/tools.js'
 import { StateStore } from '../src/state.js'
@@ -19,6 +21,7 @@ describe('tool dispatch (spec §5.6)', () => {
       'create_task',
       'read_slack',
       'read_todays_digest',
+      'run_triage_sweep',
       'search_email',
       'send_slack_message',
     ])
@@ -54,6 +57,31 @@ describe('buildGmailQuery (recency — Gmail has no hour-level relative filter)'
 
   it('leaves plain queries untouched', () => {
     expect(buildGmailQuery('subject:MLR', null, NOW)).toBe('subject:MLR')
+  })
+})
+
+describe('on-demand sweep (voice + Slack command)', () => {
+  it('recognizes sweep commands from natural phrasings, from Zaire only by caller filter', () => {
+    for (const text of ['sweep', 'Run a sweep please', 'refresh the inbox', 'triage now', 'can you refresh emails']) {
+      expect(isSweepCommand(text), text).toBe(true)
+    }
+    for (const text of ['what a sweeping view', 'nudge #4', 'approve 2']) {
+      expect(isSweepCommand(text), text).toBe(false)
+    }
+  })
+
+  it('summarizes results for the ear — new needs-you items lead', () => {
+    const spoken = summarizeSweep({
+      candidates: 12,
+      counts: { '1-Respond': 3, '2-Review': 2, Archive: 4 },
+      failures: 0,
+      newRespond: ['Luis / Outlier — slate confirm', 'Tony — call me'],
+    })
+    expect(spoken).toContain('2 new things need you')
+    expect(spoken).toContain('Luis / Outlier')
+    expect(spoken).toContain('2 filed to review and 4 archived')
+    const quiet = summarizeSweep({ candidates: 5, counts: {}, failures: 0, newRespond: [] })
+    expect(quiet).toContain('Nothing new needs you')
   })
 })
 

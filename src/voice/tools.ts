@@ -6,6 +6,7 @@ import { createDraft } from './handlers/create_draft.js'
 import { createTask } from './handlers/create_task.js'
 import { readTodaysDigest } from './handlers/read_digest.js'
 import { readSlack } from './handlers/read_slack.js'
+import { runTriageSweep } from './handlers/run_sweep.js'
 import { searchEmail } from './handlers/search_email.js'
 import { sendSlackMessage } from './handlers/send_slack_message.js'
 // send_slack_note was retired 2026-08-09 with the memo pipeline (its [voice]
@@ -78,6 +79,13 @@ export const toolSchemas = [
   },
   {
     type: 'function',
+    name: 'run_triage_sweep',
+    description:
+      'Run the inbox triage sweep RIGHT NOW instead of waiting for the hourly cron — labels new mail and updates the ledger. Use when Zaire says "sweep the inbox," "catch me up," or after search_email shows new mail he wants triaged. Takes up to a minute; say a short preamble ("Give me a minute, sweeping now") BEFORE calling.',
+    parameters: { type: 'object', properties: {} },
+  },
+  {
+    type: 'function',
     name: 'send_slack_message',
     description:
       'Post a message to the #inbox-gps Slack channel as Arya. Use when Zaire says "post in Slack," "note it in the channel," or "tell the team X." Post his intent in his phrasing; do not embellish.',
@@ -138,6 +146,7 @@ const HANDLERS: Record<string, (args: Record<string, unknown>) => Promise<string
   read_todays_digest: readTodaysDigest,
   create_draft: createDraft,
   create_task: createTask,
+  run_triage_sweep: runTriageSweep,
   send_slack_message: sendSlackMessage,
   read_slack: readSlack,
   search_email: searchEmail,

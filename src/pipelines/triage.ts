@@ -74,11 +74,29 @@ export function decideAction(input: {
 interface SweepOptions {
   dryRun: boolean
   maxThreads: number
+  /** Overrides for callers not running from the repo root (voice, commands). */
+  agentDir?: string
+  statePath?: string
 }
 
-async function sweep(options: SweepOptions): Promise<void> {
-  const files = loadAgentFiles()
-  const store = new StateStore(optionalEnv('STATE_DB_PATH', 'data/state.db'))
+export interface SweepResult {
+  candidates: number
+  counts: Record<string, number>
+  failures: number
+  /** Digest lines of threads newly labeled 1-Respond this run. */
+  newRespond: string[]
+}
+
+/**
+ * One triage sweep, callable in-process (voice tool, Slack command) as well as
+ * from the CLI. Idempotent as ever — already-triaged threads skip, so an
+ * on-demand run between cron runs is cheap.
+ */
+export async function runSweep(options: SweepOptions): Promise<SweepResult> {
+  const files = loadAgentFiles(options.agentDir)
+  const store = new StateStore(
+    options.statePath ?? optionalEnv('STATE_DB_PATH', 'data/state.db'),
+  )
   const gmail = gmailClient({
     clientId: requireEnv('GMAIL_CLIENT_ID'),
     clientSecret: requireEnv('GMAIL_CLIENT_SECRET'),
@@ -97,6 +115,7 @@ async function sweep(options: SweepOptions): Promise<void> {
   const candidates = [...new Set([...inboxIds, ...waitingIds])]
 
   const counts: Record<string, number> = {}
+  const newRespond: string[] = []
   let failures = 0
 
   for (const threadId of candidates) {
@@ -165,6 +184,9 @@ async function sweep(options: SweepOptions): Promise<void> {
           digestLine: classification?.digestLine ?? state?.digestLine ?? null,
         })
         console.log(`labeled: ${line}`)
+        if (label === '1-Respond' && state?.label !== '1-Respond') {
+          newRespond.push(classification?.digestLine ?? thread.subject)
+        }
       }
       counts[label] = (counts[label] ?? 0) + 1
     } catch (error) {
@@ -186,11 +208,35 @@ async function sweep(options: SweepOptions): Promise<void> {
     await postAlert(`triage sweep completed with ${failures} thread failures`)
   }
   store.close()
+  return { candidates: candidates.length, counts, failures, newRespond }
+}
+
+/** Spoken/Slack-friendly one-liner for an on-demand sweep result. */
+export function summarizeSweep(result: SweepResult): string {
+  const parts: string[] = []
+  const respond = result.counts['1-Respond'] ?? 0
+  if (result.newRespond.length > 0) {
+    parts.push(
+      `${result.newRespond.length === 1 ? 'One new thing needs' : `${result.newRespond.length} new things need`} you: ${result.newRespond.slice(0, 5).join('; ')}.`,
+    )
+  } else if (respond > 0) {
+    parts.push('Nothing new needs you beyond what was already on the list.')
+  } else {
+    parts.push('Nothing new needs you.')
+  }
+  const review = result.counts['2-Review'] ?? 0
+  const archived = result.counts['Archive'] ?? 0
+  const filed: string[] = []
+  if (review > 0) filed.push(`${review} filed to review`)
+  if (archived > 0) filed.push(`${archived} archived`)
+  if (filed.length > 0) parts.push(`Also ${filed.join(' and ')}.`)
+  if (result.failures > 0) parts.push(`${result.failures} thread(s) failed — I'll catch them next run.`)
+  return parts.join(' ')
 }
 
 const isMain = process.argv[1]?.endsWith('triage.ts') || process.argv[1]?.endsWith('triage.js')
 if (isMain) {
-  sweep({
+  runSweep({
     dryRun: process.argv.includes('--dry-run'),
     maxThreads: Number(optionalEnv('TRIAGE_MAX_THREADS', '100')),
   }).catch((error) => {
