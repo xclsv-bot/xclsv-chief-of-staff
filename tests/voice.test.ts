@@ -4,6 +4,7 @@
 
 import { describe, expect, it } from 'vitest'
 import { formatSpokenDigest } from '../src/voice/handlers/read_digest.js'
+import { buildGmailQuery } from '../src/voice/handlers/search_email.js'
 import { nowLinePT } from '../src/voice/session.js'
 import { executeToolCall, registeredTools, toolSchemas } from '../src/voice/tools.js'
 import { StateStore } from '../src/state.js'
@@ -35,6 +36,24 @@ describe('tool dispatch (spec §5.6)', () => {
     expect(result).toContain("didn't go through")
     expect(result).toContain('the task needs a title')
     expect(result).not.toMatch(/\n\s+at /) // no stack traces read aloud
+  })
+})
+
+describe('buildGmailQuery (recency — Gmail has no hour-level relative filter)', () => {
+  const NOW = Date.parse('2026-08-10T18:00:00Z')
+
+  it('converts since_hours to a precise epoch after: filter', () => {
+    expect(buildGmailQuery('from:andrea', 2, NOW)).toBe(
+      `from:andrea after:${Math.floor(NOW / 1000) - 2 * 3600}`,
+    )
+  })
+
+  it('defaults to the whole inbox when only since_hours is given', () => {
+    expect(buildGmailQuery('', 1, NOW)).toBe(`in:inbox after:${Math.floor(NOW / 1000) - 3600}`)
+  })
+
+  it('leaves plain queries untouched', () => {
+    expect(buildGmailQuery('subject:MLR', null, NOW)).toBe('subject:MLR')
   })
 })
 

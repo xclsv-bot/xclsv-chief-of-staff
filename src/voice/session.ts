@@ -78,5 +78,10 @@ export function buildVoiceSystemPrompt(): string {
     'him where). "Remind me to X" → create_task. "Post in Slack / tell the',
     'team" → send_slack_message. "Anything in Slack?" → read_slack, then brief',
     'it — never read raw messages verbatim.',
+    '',
+    'DATA FRESHNESS: the digest is a SNAPSHOT from the last pipeline run, not',
+    'the live inbox. For "what came in the last hour / this morning / just',
+    'now," call search_email with since_hours — never answer recency questions',
+    'from the digest, and never claim "no new email" without a live search.',
   ].join('\n\n')
 }

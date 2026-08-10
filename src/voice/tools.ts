@@ -111,21 +111,25 @@ export const toolSchemas = [
     type: 'function',
     name: 'search_email',
     description:
-      'Search Zaire\'s Gmail for a specific topic, person, or thread. Use when Zaire asks "what did X say?" or "when did we last talk to Y?"',
+      'Search Zaire\'s Gmail LIVE — the only tool that sees mail that arrived since the last digest. Use for "what did X say?", "when did we last talk to Y?", and ALWAYS for recency questions like "any emails in the last hour?" (use since_hours; never put hours into the query string — Gmail cannot parse them).',
     parameters: {
       type: 'object',
       properties: {
         query: {
           type: 'string',
           description:
-            'Gmail search syntax. Examples: "from:andrea tailgate", "subject:MLR after:2026/07/01".',
+            'Gmail search syntax. Examples: "from:andrea tailgate", "subject:MLR". Omit (with since_hours set) to mean the whole inbox. Never use newer_than with hours.',
+        },
+        since_hours: {
+          type: 'number',
+          description:
+            'Only mail from the last N hours (converted to a precise epoch filter). Use for "last hour" → 1, "this morning" → 4–6.',
         },
         max_results: {
           type: 'integer',
           description: 'Cap on returned threads. Default 5.',
         },
       },
-      required: ['query'],
     },
   },
 ]
