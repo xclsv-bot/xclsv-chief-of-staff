@@ -17,8 +17,19 @@ import {
 import { StateStore } from '../state.js'
 import { runSweep, summarizeSweep } from './triage.js'
 
+/**
+ * Generous on purpose: a false positive costs one idempotent sweep and a
+ * status reply; a false negative is Zaire typing "triage my inbox" into a
+ * silent channel (which is exactly what happened, 2026-08-10 8:37 AM).
+ */
 export function isSweepCommand(text: string): boolean {
-  return /\b(sweep|triage now|refresh (the )?(inbox|labels|emails?))\b/i.test(text.trim())
+  const t = text.trim().toLowerCase()
+  return (
+    /\bsweep\b/.test(t) ||
+    /\btriage\b/.test(t) ||
+    /\brefresh\b.*\b(inbox|labels?|emails?|mail)\b/.test(t) ||
+    /\bcatch me up\b.*\b(inbox|emails?|mail)\b/.test(t)
+  )
 }
 
 async function run(): Promise<void> {

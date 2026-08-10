@@ -62,10 +62,19 @@ describe('buildGmailQuery (recency — Gmail has no hour-level relative filter)'
 
 describe('on-demand sweep (voice + Slack command)', () => {
   it('recognizes sweep commands from natural phrasings, from Zaire only by caller filter', () => {
-    for (const text of ['sweep', 'Run a sweep please', 'refresh the inbox', 'triage now', 'can you refresh emails']) {
+    for (const text of [
+      'sweep',
+      'Run a sweep please',
+      'refresh the inbox',
+      'triage now',
+      'triage my inbox', // the exact phrasing that got missed, 2026-08-10
+      'Triage',
+      'can you refresh emails',
+      'catch me up on my inbox',
+    ]) {
       expect(isSweepCommand(text), text).toBe(true)
     }
-    for (const text of ['what a sweeping view', 'nudge #4', 'approve 2']) {
+    for (const text of ['what a sweeping view', 'nudge #4', 'approve 2', 'catch me up later']) {
       expect(isSweepCommand(text), text).toBe(false)
     }
   })
