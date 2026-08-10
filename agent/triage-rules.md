@@ -91,7 +91,7 @@ No preamble, no sign-off. Three sections:
 Every 1-Respond thread, one line each:
 
 ```
-3) Luis / Outlier — asking to confirm September slate scope — waiting 3d — [link]
+3) Sam / Contoso — asking to confirm the September scope — waiting 3d — [link]
 ```
 
 Format: `n) Sender / Company — the ask in a few words — age — [link]`. Append

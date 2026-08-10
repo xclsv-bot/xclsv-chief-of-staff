@@ -64,7 +64,7 @@ export function buildSystemPrompt(
     ' "digest_line": "<Sender first name> / <Company> — <the ask in a few words>"}',
     '',
     'The digest_line is the one line Zaire sees for this thread in the Slack digest',
-    '(spec §4A) — e.g. "Luis / Outlier — asking to confirm September slate scope".',
+    '(spec §4A) — e.g. "Sam / Contoso — asking to confirm the September scope".',
     'Write it per your digest style in ARYA.md: one line, summarize hard, no filler.',
     '',
     '"low" confidence means you would want Zaire to see a "(low confidence)" tag on the',

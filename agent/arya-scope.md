@@ -12,7 +12,7 @@ Everything here still routes outbound artifacts through the Slack approval gate 
 | Area | Examples |
 |---|---|
 | Scheduling & calendar coordination | Proposing times, confirming dates, rescheduling logistics, coordinating attendees |
-| Documents, decks, assets, links, reports | "Send the deck to Luis," requesting creative assets, delivering a report link |
+| Documents, decks, assets, links, reports | "Send the deck to <name>," requesting creative assets, delivering a report link |
 | Status updates & logistics | Event run-of-show details, campaign status, content delivery timing |
 | Follow-up nudges | Chasing threads in 3-Waiting per `nudge-rules.md` |
 | Intro coordination | Making the connection happen **after** Zaire decided the intro should happen |
