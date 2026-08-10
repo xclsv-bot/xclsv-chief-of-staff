@@ -16,8 +16,10 @@ describe('tool dispatch (spec §5.6)', () => {
     expect(schemaNames).toEqual([
       'create_draft',
       'create_task',
+      'read_slack',
       'read_todays_digest',
       'search_email',
+      'send_slack_message',
     ])
   })
 

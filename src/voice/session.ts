@@ -75,6 +75,8 @@ export function buildVoiceSystemPrompt(): string {
     '"What\'s on my plate" → call read_todays_digest first, then BRIEF it per',
     'voice-conduct.md. Do not invent items. Dictated replies → create_draft with',
     'his exact intent (draft lands in Gmail Drafts + Slack for approval — tell',
-    'him where). "Remind me to X" → create_task.',
+    'him where). "Remind me to X" → create_task. "Post in Slack / tell the',
+    'team" → send_slack_message. "Anything in Slack?" → read_slack, then brief',
+    'it — never read raw messages verbatim.',
   ].join('\n\n')
 }

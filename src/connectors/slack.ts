@@ -117,6 +117,25 @@ export async function uploadAudio(
   })
 }
 
+/** Display name for a user id (voice reads names, not IDs). Null on failure —
+ * callers degrade gracefully; needs the users:read bot scope. */
+export async function getUserName(
+  client: WebClient,
+  userId: string,
+): Promise<string | null> {
+  try {
+    const res = await client.users.info({ user: userId })
+    const user = res.user as
+      | { profile?: { display_name?: string; real_name?: string }; real_name?: string }
+      | undefined
+    return (
+      user?.profile?.display_name || user?.profile?.real_name || user?.real_name || null
+    )
+  } catch {
+    return null
+  }
+}
+
 /** Download a Slack file (voice note) — needs the files:read bot scope. */
 export async function downloadFile(urlPrivate: string, token: string): Promise<Buffer> {
   const res = await fetch(urlPrivate, { headers: { Authorization: `Bearer ${token}` } })

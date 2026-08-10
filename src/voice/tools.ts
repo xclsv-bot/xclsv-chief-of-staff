@@ -5,10 +5,12 @@
 import { createDraft } from './handlers/create_draft.js'
 import { createTask } from './handlers/create_task.js'
 import { readTodaysDigest } from './handlers/read_digest.js'
+import { readSlack } from './handlers/read_slack.js'
 import { searchEmail } from './handlers/search_email.js'
-// send_slack_note was retired 2026-08-09 with the memo pipeline — nothing
-// downstream consumed the [voice]-tagged posts once src/pipelines/memo.ts
-// went away, so the tool would have succeeded silently and done nothing.
+import { sendSlackMessage } from './handlers/send_slack_message.js'
+// send_slack_note was retired 2026-08-09 with the memo pipeline (its [voice]
+// tag fed a poller that no longer exists). send_slack_message /read_slack
+// replace it as direct chief-of-staff Slack access (Zaire, 2026-08-10).
 
 export const toolSchemas = [
   {
@@ -76,6 +78,37 @@ export const toolSchemas = [
   },
   {
     type: 'function',
+    name: 'send_slack_message',
+    description:
+      'Post a message to the #inbox-gps Slack channel as Arya. Use when Zaire says "post in Slack," "note it in the channel," or "tell the team X." Post his intent in his phrasing; do not embellish.',
+    parameters: {
+      type: 'object',
+      properties: {
+        message: {
+          type: 'string',
+          description: 'The message to post, carrying exactly what Zaire said to convey.',
+        },
+      },
+      required: ['message'],
+    },
+  },
+  {
+    type: 'function',
+    name: 'read_slack',
+    description:
+      'Read recent activity in the #inbox-gps Slack channel (last 24h). Use when Zaire asks "anything in Slack?", "did anyone reply in the channel?", or "what did Arya post?"',
+    parameters: {
+      type: 'object',
+      properties: {
+        max_messages: {
+          type: 'integer',
+          description: 'How many recent messages to read back. Default 6, max 10.',
+        },
+      },
+    },
+  },
+  {
+    type: 'function',
     name: 'search_email',
     description:
       'Search Zaire\'s Gmail for a specific topic, person, or thread. Use when Zaire asks "what did X say?" or "when did we last talk to Y?"',
@@ -101,6 +134,8 @@ const HANDLERS: Record<string, (args: Record<string, unknown>) => Promise<string
   read_todays_digest: readTodaysDigest,
   create_draft: createDraft,
   create_task: createTask,
+  send_slack_message: sendSlackMessage,
+  read_slack: readSlack,
   search_email: searchEmail,
 }
 
