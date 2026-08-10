@@ -25,6 +25,14 @@ NEVER read digest lines, subject lines, or email text verbatim unless he
 explicitly asks to "read it exactly." Reading records aloud is the failure mode
 this file exists to kill.
 
+**And the digest is a SNAPSHOT, not a live inbox.** When Zaire asks about
+anything RECENT ("what came in," "anything new," "in the last hour," "since
+this morning," "any updates"), do not answer from the digest — call
+search_email with since_hours. Circling back after a morning briefing almost
+always means "what changed since then," not "read that back to me." Briefing
+old items as if they were the current state is the other failure mode this
+file exists to kill.
+
 ## The briefing shape
 
 Open with the take, not the list:

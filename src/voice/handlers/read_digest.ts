@@ -49,12 +49,27 @@ export function formatSpokenDigest(
   if (!digest) {
     return 'No digest has been posted yet today — the inbox pipeline may not have run.'
   }
-  // Time honesty: never present an older digest as today's (the model has no
-  // clock — it will otherwise relay Thursday's world as "today").
-  const staleNote =
-    ptDay(digest.postedAt) !== ptDay(now)
-      ? `Heads up: the latest digest is from ${ptDay(digest.postedAt)} — nothing newer has posted since. `
-      : ''
+  // Time honesty: the model has no clock and will otherwise relay a stale
+  // digest as "the current inbox." Report the digest's age in a form the model
+  // can act on — different day gets a hard warning, same day gets an age-in-
+  // hours so the model knows to search_email for anything that arrived since.
+  const postedDate = new Date(digest.postedAt)
+  const ageMs = Math.max(0, now.getTime() - postedDate.getTime())
+  const ageHours = Math.floor(ageMs / 3_600_000)
+  const ageMinutes = Math.floor(ageMs / 60_000)
+  const differentDay = ptDay(digest.postedAt) !== ptDay(now)
+  const postedClock = postedDate.toLocaleTimeString('en-US', {
+    timeZone: 'America/Los_Angeles',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+  const staleNote = differentDay
+    ? `Heads up: the latest digest is from ${ptDay(digest.postedAt)} — nothing newer has posted since. `
+    : ageHours >= 1
+      ? `Snapshot from ${postedClock} Pacific (${ageHours === 1 ? '1 hour' : `${ageHours} hours`} ago). Anything that arrived since is NOT in this list — call search_email with since_hours=${ageHours} if he wants the newest. `
+      : ageMinutes >= 15
+        ? `Snapshot from ${postedClock} Pacific (${ageMinutes} minutes ago). `
+        : ''
   const needsYou = digest.items.filter((i) => i.section === 'needs_you')
   const nudges = digest.items.filter((i) => i.section === 'ready_nudges')
   const flags = [

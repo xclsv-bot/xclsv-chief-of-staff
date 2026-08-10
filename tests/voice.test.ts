@@ -157,6 +157,21 @@ describe('formatSpokenDigest (spec §5.1 — never invents items)', () => {
     expect(formatSpokenDigest(store, 'needs_you', new Date())).not.toContain('Heads up')
     store.close()
   })
+
+  it('same-day but hours-old digest tells the model it is a snapshot (recency routing)', () => {
+    // The failure this guards against: morning digest posted at 4:48am PT,
+    // Zaire asks at 10am, model briefs the morning items as if they were the
+    // current inbox. The handler needs to surface the age so the model knows
+    // to reach for search_email instead.
+    const store = seededStore()
+    const fiveHoursLater = new Date(Date.now() + 5 * 3_600_000)
+    const spoken = formatSpokenDigest(store, 'needs_you', fiveHoursLater)
+    expect(spoken).toContain('Snapshot from')
+    expect(spoken).toContain('5 hours ago')
+    expect(spoken).toContain('search_email')
+    expect(spoken).not.toContain('Heads up') // same-day, not cross-day
+    store.close()
+  })
 })
 
 describe('nowLinePT (session time anchor)', () => {
